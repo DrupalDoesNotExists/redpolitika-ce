@@ -1,6 +1,8 @@
 package model
 
 import (
+	"strings"
+
 	"github.com/drupaldoesnotexists/redpolitika/ce/internal/domain/detect"
 	"github.com/drupaldoesnotexists/redpolitika/ce/internal/domain/fix"
 )
@@ -163,7 +165,6 @@ func (r *Rule) Detect(text *Text) []*Flag {
 			continue
 		}
 
-		occurrences := make(map[string]int)
 		for _, m := range matches {
 			start, end := m.Start, m.End
 			if start < 0 || end > len(para) || start >= end {
@@ -177,10 +178,9 @@ func (r *Rule) Detect(text *Text) []*Flag {
 			}
 
 			matchStr := para[start:end]
-
-			key := matchStr
-			occ := occurrences[key]
-			occurrences[key]++
+			// A23: occurrence = N-th copy of match_text in the paragraph
+			// (not among detect hits). Frontend resolves span via indexOf.
+			occ := occurrenceInParagraph(para, matchStr, start)
 
 			span, err := NewSpan(start, end)
 			if err != nil {
@@ -225,4 +225,27 @@ func (r *Rule) Detect(text *Text) []*Flag {
 		}
 	}
 	return flags
+}
+
+// occurrenceInParagraph returns how many times matchStr appears in para
+// before byte offset start (non-overlapping, same as frontend indexOf loop).
+func occurrenceInParagraph(para, matchStr string, start int) int {
+	if matchStr == "" || start <= 0 {
+		return 0
+	}
+	occ := 0
+	searchFrom := 0
+	for searchFrom < start {
+		rel := strings.Index(para[searchFrom:], matchStr)
+		if rel < 0 {
+			break
+		}
+		abs := searchFrom + rel
+		if abs >= start {
+			break
+		}
+		occ++
+		searchFrom = abs + len(matchStr)
+	}
+	return occ
 }

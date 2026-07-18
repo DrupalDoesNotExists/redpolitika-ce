@@ -156,24 +156,27 @@ export function evaluateRuleOnText(
       try {
         const re = new RegExp(rule.pattern, "g" + (rule.pattern.includes("(?i)") ? "" : ""));
         let match: RegExpExecArray | null;
-        let occurrence = 0;
+        const occurrences: Record<string, number> = {};
         while ((match = re.exec(para.text)) !== null) {
           if (match[0].length === 0) {
             re.lastIndex++;
             continue;
           }
 
+          const matchText = match[0];
+          const occurrence = occurrences[matchText] ?? 0;
+          occurrences[matchText] = occurrence + 1;
+
           const anchor: Anchor = {
             paragraphIndex: paraIdx,
             occurrence,
-            matchText: match[0],
+            matchText,
           };
 
           // A23: flagId = FNV-1a 64 from rule_id ‖ match_text ‖ paragraph_index ‖ occurrence
-          const raw = `${rule.id}\0${match[0]}\0${paraIdx}\0${occurrence}`;
+          const raw = `${rule.id}\0${matchText}\0${paraIdx}\0${occurrence}`;
           flags.push(createTentativeFlag(raw, rule, anchor));
 
-          occurrence++;
           if (match[0].length === 0) break;
         }
       } catch {

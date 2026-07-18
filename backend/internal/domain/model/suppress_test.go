@@ -62,3 +62,46 @@ func TestRuleDetectHonoursSuppress(t *testing.T) {
 		t.Fatalf("expected 0 flags under suppress, got %d", n)
 	}
 }
+
+// paragraph_end may match a single letter that also appears earlier in the
+// paragraph; occurrence must index that letter in the full paragraph text
+// (A23), otherwise the frontend highlights the first copy.
+func TestRuleDetectOccurrenceCountsPriorTextCopies(t *testing.T) {
+	inner, err := detect.Build("regex", map[string]interface{}{
+		"pattern": "[^.!?]", "case_sensitive": false,
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	node, err := detect.Build("paragraph_end", nil, []detect.Node{inner})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rule, err := model.NewRule(
+		"readability/sentence-final-punctuation", 3, "readability",
+		"", node, nil,
+		"Добавьте точку.", "Пунктуация", "", model.Examples{}, nil,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	text := "привет без котлет"
+	flags := rule.Detect(model.NewText(text))
+	if len(flags) != 1 {
+		t.Fatalf("expected 1 flag, got %d", len(flags))
+	}
+	f := flags[0]
+	if f.MatchText().Value() != "т" {
+		t.Fatalf("match_text: got %q", f.MatchText().Value())
+	}
+	// т in привет (0), т in котлет mid (1), final т (2)
+	if f.Occurrence().Value() != 2 {
+		t.Fatalf("occurrence: got %d, want 2 (not first т in привет)", f.Occurrence().Value())
+	}
+	span := f.Span()
+	got := text[span.Start():span.End()]
+	if got != "т" || span.Start() != len(text)-len("т") {
+		t.Fatalf("span [%d:%d] %q, want final т", span.Start(), span.End(), got)
+	}
+}
