@@ -179,6 +179,9 @@ export default function CodeMirrorEditor({
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
   const onFlagClickRef = useRef(onFlagClick);
+  // Skip onChange when applying store→editor sync (accept/applyAll), otherwise
+  // a full-doc replace re-enters setText and can drop remaining flags.
+  const suppressChangeRef = useRef(false);
 
   // Sync refs after render
   useEffect(() => {
@@ -218,7 +221,7 @@ export default function CodeMirrorEditor({
         flagGutter(flagDataField),
         clickHandler,
         EditorView.updateListener.of((update) => {
-          if (update.docChanged) {
+          if (update.docChanged && !suppressChangeRef.current) {
             onChangeRef.current(update.state.doc.toString());
           }
         }),
@@ -244,7 +247,9 @@ export default function CodeMirrorEditor({
     if (!view) return;
     const cur = view.state.doc.toString();
     if (cur !== text) {
+      suppressChangeRef.current = true;
       view.dispatch({ changes: { from: 0, to: cur.length, insert: text } });
+      suppressChangeRef.current = false;
     }
   }, [text]);
 

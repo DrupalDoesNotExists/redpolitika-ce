@@ -9,22 +9,54 @@ import type { FlagState, Anchor, Category } from "./store";
 /*  Zod schemas                                                        */
 /* ------------------------------------------------------------------ */
 
-export const ClientRuleSchema = z.object({
+/** Wire format from GET /api/client-rules (docs/api.md). */
+const ClientRuleWireSchema = z.object({
   id: z.string(),
   name: z.string().optional(),
-  type: z.enum(["regex", "wordlist"]),
+  method: z.enum(["regex", "wordlist"]),
   category: z.enum(["cleanliness", "readability"]).optional().default("cleanliness"),
   pattern: z.string().optional(),
   words: z.array(z.string()).optional(),
   severity: z.number().min(1).max(10),
   case_sensitive: z.boolean().optional(),
   suggestion: z.string().optional(),
-  autofix: z.string().optional(),
+  auto_fix: z.string().nullable().optional(),
   message: z.string().optional(),
   description: z.string().optional(),
+  engine: z.string().optional(),
 });
 
-export type ClientRule = z.infer<typeof ClientRuleSchema>;
+export type ClientRule = {
+  id: string;
+  name?: string;
+  type: "regex" | "wordlist";
+  category: "cleanliness" | "readability";
+  pattern?: string;
+  words?: string[];
+  severity: number;
+  case_sensitive?: boolean;
+  suggestion?: string;
+  autofix?: string;
+  message?: string;
+  description?: string;
+};
+
+function wireToClientRule(w: z.infer<typeof ClientRuleWireSchema>): ClientRule {
+  return {
+    id: w.id,
+    name: w.name,
+    type: w.method,
+    category: w.category,
+    pattern: w.pattern,
+    words: w.words,
+    severity: w.severity,
+    case_sensitive: w.case_sensitive,
+    suggestion: w.suggestion,
+    autofix: w.auto_fix ?? undefined,
+    message: w.message,
+    description: w.description,
+  };
+}
 
 /* ------------------------------------------------------------------ */
 /*  FNV-1a 64-bit hash → base36 string (per A23)                       */
@@ -280,5 +312,5 @@ export async function fetchClientRules(): Promise<ClientRule[]> {
     throw new Error(`Failed to fetch client rules: ${res.status}`);
   }
   const json: unknown = await res.json();
-  return z.array(ClientRuleSchema).parse(json);
+  return z.array(ClientRuleWireSchema).parse(json).map(wireToClientRule);
 }

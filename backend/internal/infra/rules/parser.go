@@ -17,17 +17,17 @@ import (
 
 // RuleYAML is the YAML representation of a single rule (§9).
 type RuleYAML struct {
-	ID       string       `yaml:"id"`
-	Severity int          `yaml:"severity"`
-	Category string       `yaml:"category"`
-	Enabled  *bool        `yaml:"enabled,omitempty"`
+	ID       string         `yaml:"id"`
+	Severity int            `yaml:"severity"`
+	Category string         `yaml:"category"`
+	Enabled  *bool          `yaml:"enabled,omitempty"`
 	Detect   DetectNodeYAML `yaml:"detect"`
-	Fix      FixNodeYAML  `yaml:"fix,omitempty"`
-	Disable  bool         `yaml:"disable,omitempty"`
-	Name     string       `yaml:"name,omitempty"`
-	URL      string       `yaml:"url,omitempty"`
-	Examples ExamplesYAML `yaml:"examples,omitempty"`
-	Related  []RelatedYAML `yaml:"related,omitempty"`
+	Fix      FixNodeYAML    `yaml:"fix,omitempty"`
+	Disable  bool           `yaml:"disable,omitempty"`
+	Name     string         `yaml:"name,omitempty"`
+	URL      string         `yaml:"url,omitempty"`
+	Examples ExamplesYAML   `yaml:"examples,omitempty"`
+	Related  []RelatedYAML  `yaml:"related,omitempty"`
 }
 
 // ExamplesYAML is the examples block in YAML.
@@ -431,6 +431,12 @@ type flatFixNode FixNodeYAML
 //	replace: { with: "..." }    → method=replace, With="..."
 //	remove: {}                  → method=remove
 //	regex_replace: { ... }      → method=regex_replace
+//
+// Sibling meta fields under fix: are also accepted:
+//
+//	fix:
+//	  replace: { with: "…" }
+//	  suggestion: "Замените три точки…"
 func (n *FixNodeYAML) UnmarshalYAML(value *yaml.Node) error {
 	switch value.Kind {
 	case yaml.SequenceNode:
@@ -442,57 +448,79 @@ func (n *FixNodeYAML) UnmarshalYAML(value *yaml.Node) error {
 				return value.Decode((*flatFixNode)(n))
 			}
 		}
-		// Key-as-method format
+		// Key-as-method format: first non-meta key is the method;
+		// sibling keys (suggestion/autofix) sit alongside it under fix:.
 		if len(value.Content) < 2 {
 			return nil
 		}
-		n.Method = value.Content[0].Value
-		valNode := value.Content[1]
-		switch valNode.Kind {
-		case yaml.SequenceNode:
-			return valNode.Decode(&n.Args)
-		case yaml.MappingNode:
-			for j := 0; j+1 < len(valNode.Content); j += 2 {
-				key := valNode.Content[j].Value
-				subVal := valNode.Content[j+1]
-				switch key {
-				case "with":
-					if err := subVal.Decode(&n.With); err != nil {
+		for i := 0; i+1 < len(value.Content); i += 2 {
+			key := value.Content[i].Value
+			valNode := value.Content[i+1]
+			switch key {
+			case "suggestion":
+				if err := valNode.Decode(&n.Suggestion); err != nil {
+					return err
+				}
+			case "autofix":
+				if err := valNode.Decode(&n.Autofix); err != nil {
+					return err
+				}
+			default:
+				// First method key wins; ignore extra method siblings
+				if n.Method != "" {
+					continue
+				}
+				n.Method = key
+				switch valNode.Kind {
+				case yaml.SequenceNode:
+					if err := valNode.Decode(&n.Args); err != nil {
 						return err
 					}
-				case "pattern":
-					if err := subVal.Decode(&n.Pattern); err != nil {
-						return err
-					}
-				case "replacement":
-					if err := subVal.Decode(&n.Replacement); err != nil {
-						return err
-					}
-				case "prefix":
-					if err := subVal.Decode(&n.Prefix); err != nil {
-						return err
-					}
-				case "suffix":
-					if err := subVal.Decode(&n.Suffix); err != nil {
-						return err
-					}
-				case "suggestion":
-					if err := subVal.Decode(&n.Suggestion); err != nil {
-						return err
-					}
-				case "autofix":
-					if err := subVal.Decode(&n.Autofix); err != nil {
-						return err
-					}
-				case "detect":
-					n.WhenDetect = &DetectNodeYAML{}
-					if err := subVal.Decode(n.WhenDetect); err != nil {
-						return err
-					}
-				case "then":
-					n.ThenFix = &FixNodeYAML{}
-					if err := subVal.Decode(n.ThenFix); err != nil {
-						return err
+				case yaml.MappingNode:
+					for j := 0; j+1 < len(valNode.Content); j += 2 {
+						argKey := valNode.Content[j].Value
+						subVal := valNode.Content[j+1]
+						switch argKey {
+						case "with":
+							if err := subVal.Decode(&n.With); err != nil {
+								return err
+							}
+						case "pattern":
+							if err := subVal.Decode(&n.Pattern); err != nil {
+								return err
+							}
+						case "replacement":
+							if err := subVal.Decode(&n.Replacement); err != nil {
+								return err
+							}
+						case "prefix":
+							if err := subVal.Decode(&n.Prefix); err != nil {
+								return err
+							}
+						case "suffix":
+							if err := subVal.Decode(&n.Suffix); err != nil {
+								return err
+							}
+						case "suggestion":
+							// Also allow suggestion nested inside the method map
+							if err := subVal.Decode(&n.Suggestion); err != nil {
+								return err
+							}
+						case "autofix":
+							if err := subVal.Decode(&n.Autofix); err != nil {
+								return err
+							}
+						case "detect":
+							n.WhenDetect = &DetectNodeYAML{}
+							if err := subVal.Decode(n.WhenDetect); err != nil {
+								return err
+							}
+						case "then":
+							n.ThenFix = &FixNodeYAML{}
+							if err := subVal.Decode(n.ThenFix); err != nil {
+								return err
+							}
+						}
 					}
 				}
 			}

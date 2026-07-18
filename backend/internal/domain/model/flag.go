@@ -95,12 +95,13 @@ func NewFlag(
 	}
 	return &Flag{
 		id: FlagIDFromUint64(id), ruleID: rid,
-		matchText: MatchTextFromString(matchText), suggestion: SuggestionFromString(suggestion),
-		autofix: autofix,
-		severity: sev, category: cat,
+		matchText:  MatchTextFromString(matchText),
+		suggestion: SuggestionFromString(suggestion),
+		autofix:    autofix,
+		severity:   sev, category: cat,
 		occurrence: OccurrenceFromInt(occurrence), message: message,
 		span: span, paragraphIndex: ParagraphIndexFromInt(paraIdx),
-		state: FlagStateRaised,
+		state:    FlagStateRaised,
 		ruleName: ruleName,
 		ruleUrl:  ruleUrl,
 		examples: examples,

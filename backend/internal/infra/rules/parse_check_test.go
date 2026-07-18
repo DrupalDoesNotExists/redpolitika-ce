@@ -71,6 +71,34 @@ rules:
 	}
 }
 
+func TestParseFixLevelSuggestion(t *testing.T) {
+	data := []byte(`
+rules:
+  - id: "style/ellipsis"
+    severity: 3
+    category: "cleanliness"
+    name: "Многоточие"
+    detect:
+      regex: "\\.\\.\\."
+    fix:
+      replace:
+        with: "…"
+      suggestion: "Замените три точки на символ многоточия"
+`)
+	parsed, err := ParseYAML(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(parsed) != 1 {
+		t.Fatalf("expected 1 rule, got %d", len(parsed))
+	}
+	got := parsed[0].Suggestion().Value()
+	want := "Замените три точки на символ многоточия"
+	if got != want {
+		t.Fatalf("suggestion: got %q, want %q", got, want)
+	}
+}
+
 func TestDetectRegisteredMethods(t *testing.T) {
 	methods := detect.Registered()
 	if len(methods) == 0 {

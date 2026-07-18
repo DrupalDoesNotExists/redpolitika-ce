@@ -164,6 +164,25 @@ function cleanDelete(text: string): string {
     .replace(/[,.\s…]+$/, '');       // trim trailing punctuation/space/dots
 }
 
+/** Re-resolve spans from anchors after text mutation; drop unresolvable. */
+function reresolveFlags(
+  flags: Record<string, FlagState>,
+  text: string,
+): Record<string, FlagState> {
+  const next = { ...flags };
+  for (const id of Object.keys(next)) {
+    const f = next[id];
+    if (f.status === "applied") continue;
+    const span = anchorToSpan(text, f.anchor);
+    if (span) {
+      next[id] = { ...f, span };
+    } else {
+      delete next[id];
+    }
+  }
+  return next;
+}
+
 /* ── Store ── */
 
 interface StoreState {
@@ -213,19 +232,7 @@ export const useStore = create<StoreState>()((set, get) => ({
     const wc = wordCount(text);
     const sc = sentenceCount(text);
     const cc = charCount(text);
-    const flags = { ...get().flags };
-
-    // Recalculate spans; remove unresolvable (skip only applied)
-    for (const id of Object.keys(flags)) {
-      const f = flags[id];
-      if (f.status === "applied") continue;
-      const span = anchorToSpan(text, f.anchor);
-      if (span) {
-        f.span = span;
-      } else {
-        delete flags[id];
-      }
-    }
+    const flags = reresolveFlags(get().flags, text);
 
     set({ text, textHash: hash, wordCount: wc, flags, sentenceCount: sc, charCount: cc });
   },
@@ -326,7 +333,8 @@ export const useStore = create<StoreState>()((set, get) => ({
       wordCount: wordCount(newText),
       sentenceCount: sentenceCount(newText),
       charCount: charCount(newText),
-      flags,
+      // Keep remaining highlights valid until the next WS check_result
+      flags: reresolveFlags(flags, newText),
     });
     return newText;
   },
@@ -360,7 +368,7 @@ export const useStore = create<StoreState>()((set, get) => ({
       wordCount: wordCount(newText),
       sentenceCount: sentenceCount(newText),
       charCount: charCount(newText),
-      flags,
+      flags: reresolveFlags(flags, newText),
     });
     return newText;
   },
