@@ -92,10 +92,10 @@ export default function FlagCard({
           </p>
         )}
 
-        {/* Message */}
-        {flag.message && (
+        {/* Suggestion */}
+        {flag.suggestion && (
           <p className="text-sm leading-[22px] text-[#6b645a] mb-3.5">
-            {flag.message}
+            {flag.suggestion}
           </p>
         )}
 
