@@ -166,8 +166,9 @@ func TestRegexCaptureGroups(t *testing.T) {
 }
 
 func TestSentenceStartWithChild(t *testing.T) {
+	// No ^ — sentence_start itself filters to sentence-start positions.
 	inner := mustBuild(t, "regex", map[string]interface{}{
-		"pattern": `^[а-я]`, "case_sensitive": true,
+		"pattern": `[а-яё]`, "case_sensitive": true,
 	}, nil)
 	node := mustBuild(t, "sentence_start", nil, []detect.Node{inner})
 
@@ -189,8 +190,9 @@ func TestSentenceStartWithChild(t *testing.T) {
 }
 
 func TestSentenceEndWithChild(t *testing.T) {
+	// No $ — sentence_end filters to sentence-end positions.
 	inner := mustBuild(t, "regex", map[string]interface{}{
-		"pattern": `же$`, "case_sensitive": true,
+		"pattern": `же`, "case_sensitive": true,
 	}, nil)
 	node := mustBuild(t, "sentence_end", nil, []detect.Node{inner})
 
@@ -225,8 +227,9 @@ func TestParagraphStartWithChild(t *testing.T) {
 }
 
 func TestParagraphEndWithChild(t *testing.T) {
+	// No $ — paragraph_end filters to paragraph-end positions.
 	inner := mustBuild(t, "regex", map[string]interface{}{
-		"pattern": `конец$`, "case_sensitive": true,
+		"pattern": `конец`, "case_sensitive": true,
 	}, nil)
 	node := mustBuild(t, "paragraph_end", nil, []detect.Node{inner})
 

@@ -454,8 +454,8 @@ func (n *SuffixNode) Detect(text string) []MatchRange {
 }
 
 // SentenceStartNode matches beginning of each sentence.
-// If Inner is set, runs it per sentence and keeps matches that start at
-// the sentence start (so ^ in a child regex anchors to that sentence).
+// If Inner is set, runs it on the full text and keeps matches whose Start
+// is a sentence-start position (boundary filter — child does not need ^).
 type SentenceStartNode struct {
 	Inner Node
 }
@@ -464,30 +464,20 @@ func (n *SentenceStartNode) Detect(text string) []MatchRange {
 	if text == "" {
 		return nil
 	}
-	spans := sentenceSpans(text)
+	positions := sentenceStartPositions(text)
 	if n.Inner == nil {
-		out := make([]MatchRange, 0, len(spans))
-		for _, s := range spans {
-			out = append(out, MatchRange{Start: s[0], End: s[0]})
+		out := make([]MatchRange, 0, len(positions))
+		for _, p := range positions {
+			out = append(out, MatchRange{Start: p, End: p})
 		}
 		return out
 	}
-	var out []MatchRange
-	for _, s := range spans {
-		lo, hi := s[0], s[1]
-		for _, m := range n.Inner.Detect(text[lo:hi]) {
-			if m.Start != 0 {
-				continue
-			}
-			out = append(out, MatchRange{Start: lo + m.Start, End: lo + m.End, Groups: m.Groups})
-		}
-	}
-	return out
+	return filterMatchesAt(n.Inner.Detect(text), positions, true)
 }
 
 // SentenceEndNode matches end of each sentence.
-// If Inner is set, runs it per sentence (excluding trailing .!?) and keeps
-// matches that end at the sentence end (so $ anchors before punctuation).
+// If Inner is set, runs it on the full text and keeps matches whose End
+// is a sentence-end position (before .!?, or EOF — child does not need $).
 type SentenceEndNode struct {
 	Inner Node
 }
@@ -505,23 +495,34 @@ func (n *SentenceEndNode) Detect(text string) []MatchRange {
 		}
 		return out
 	}
-	var out []MatchRange
-	for _, s := range sentenceSpans(text) {
+	return filterMatchesAt(n.Inner.Detect(text), sentenceEndPositions(text), false)
+}
+
+// sentenceStartPositions returns byte offsets where each sentence begins.
+func sentenceStartPositions(text string) []int {
+	spans := sentenceSpans(text)
+	out := make([]int, 0, len(spans))
+	for _, s := range spans {
+		out = append(out, s[0])
+	}
+	return out
+}
+
+// sentenceEndPositions returns exclusive end offsets of sentence content
+// (index of trailing .!?, or len(text) when the last sentence has no punct).
+func sentenceEndPositions(text string) []int {
+	spans := sentenceSpans(text)
+	out := make([]int, 0, len(spans))
+	for _, s := range spans {
 		lo, hi := s[0], s[1]
-		contentEnd := hi
-		if contentEnd > lo {
-			switch text[contentEnd-1] {
+		if hi > lo {
+			switch text[hi-1] {
 			case '.', '!', '?':
-				contentEnd--
-			}
-		}
-		subLen := contentEnd - lo
-		for _, m := range n.Inner.Detect(text[lo:contentEnd]) {
-			if m.End != subLen {
+				out = append(out, hi-1)
 				continue
 			}
-			out = append(out, MatchRange{Start: lo + m.Start, End: lo + m.End, Groups: m.Groups})
 		}
+		out = append(out, hi)
 	}
 	return out
 }
@@ -552,7 +553,7 @@ func sentenceSpans(text string) [][2]int {
 }
 
 // ParagraphStartNode matches beginning of each paragraph (after \n\n).
-// If Inner is set, runs it per paragraph and keeps matches at paragraph start.
+// If Inner is set, keeps child matches whose Start is a paragraph start.
 type ParagraphStartNode struct {
 	Inner Node
 }
@@ -561,29 +562,19 @@ func (n *ParagraphStartNode) Detect(text string) []MatchRange {
 	if text == "" {
 		return nil
 	}
-	spans := paragraphSpans(text)
+	positions := paragraphStartPositions(text)
 	if n.Inner == nil {
-		out := make([]MatchRange, 0, len(spans))
-		for _, s := range spans {
-			out = append(out, MatchRange{Start: s[0], End: s[0]})
+		out := make([]MatchRange, 0, len(positions))
+		for _, p := range positions {
+			out = append(out, MatchRange{Start: p, End: p})
 		}
 		return out
 	}
-	var out []MatchRange
-	for _, s := range spans {
-		lo, hi := s[0], s[1]
-		for _, m := range n.Inner.Detect(text[lo:hi]) {
-			if m.Start != 0 {
-				continue
-			}
-			out = append(out, MatchRange{Start: lo + m.Start, End: lo + m.End, Groups: m.Groups})
-		}
-	}
-	return out
+	return filterMatchesAt(n.Inner.Detect(text), positions, true)
 }
 
 // ParagraphEndNode matches end of each paragraph (before \n\n).
-// If Inner is set, runs it per paragraph and keeps matches at paragraph end.
+// If Inner is set, keeps child matches whose End is a paragraph end.
 type ParagraphEndNode struct {
 	Inner Node
 }
@@ -601,16 +592,25 @@ func (n *ParagraphEndNode) Detect(text string) []MatchRange {
 		}
 		return out
 	}
-	var out []MatchRange
-	for _, s := range paragraphSpans(text) {
-		lo, hi := s[0], s[1]
-		subLen := hi - lo
-		for _, m := range n.Inner.Detect(text[lo:hi]) {
-			if m.End != subLen {
-				continue
-			}
-			out = append(out, MatchRange{Start: lo + m.Start, End: lo + m.End, Groups: m.Groups})
-		}
+	return filterMatchesAt(n.Inner.Detect(text), paragraphEndPositions(text), false)
+}
+
+// paragraphStartPositions returns byte offsets where each paragraph begins.
+func paragraphStartPositions(text string) []int {
+	spans := paragraphSpans(text)
+	out := make([]int, 0, len(spans))
+	for _, s := range spans {
+		out = append(out, s[0])
+	}
+	return out
+}
+
+// paragraphEndPositions returns exclusive end offsets of each paragraph's content.
+func paragraphEndPositions(text string) []int {
+	spans := paragraphSpans(text)
+	out := make([]int, 0, len(spans))
+	for _, s := range spans {
+		out = append(out, s[1])
 	}
 	return out
 }
@@ -633,6 +633,26 @@ func paragraphSpans(text string) [][2]int {
 		spans = append(spans, [2]int{lo, len(text)})
 	}
 	return spans
+}
+
+// filterMatchesAt keeps matches whose Start (atStart=true) or End (atStart=false)
+// equals one of the given boundary positions.
+func filterMatchesAt(matches []MatchRange, positions []int, atStart bool) []MatchRange {
+	set := make(map[int]struct{}, len(positions))
+	for _, p := range positions {
+		set[p] = struct{}{}
+	}
+	var out []MatchRange
+	for _, m := range matches {
+		pos := m.Start
+		if !atStart {
+			pos = m.End
+		}
+		if _, ok := set[pos]; ok {
+			out = append(out, m)
+		}
+	}
+	return out
 }
 
 // WordBoundaryNode matches word boundaries (zero-length positions between words).

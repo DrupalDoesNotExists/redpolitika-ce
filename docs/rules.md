@@ -107,17 +107,21 @@ detect:
 
 #### `sentence_start`, `sentence_end`
 
-Bound by `.`, `!`, `?` sentence boundaries.
+Bound by `.`, `!`, `?` sentence boundaries. With a child, keeps matches that
+start (or end) at a sentence boundary — no `^`/`$` needed in the child regex.
 
 ```yaml
 detect:
   sentence_start:
-    regex: "^[а-я]"
+    regex:
+      pattern: "[а-яё]"
+      case_sensitive: true   # иначе (?i) матчит и заглавные
 ```
 
 #### `paragraph_start`, `paragraph_end`
 
-Bound by paragraph boundaries.
+Bound by paragraph boundaries. With a child, keeps matches at paragraph
+start/end — no `^`/`$` needed in the child.
 
 ```yaml
 detect:

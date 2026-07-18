@@ -16,7 +16,7 @@ rules:
     detect:
       sentence_start:
         regex:
-          pattern: "^[а-яё]"
+          pattern: "[а-яё]"
           case_sensitive: true
 `)
 	parsed, err := ParseYAML(data)
@@ -141,5 +141,63 @@ func TestDetectRegisteredMethods(t *testing.T) {
 	methods := detect.Registered()
 	if len(methods) == 0 {
 		t.Error("no detect methods registered")
+	}
+}
+
+// Capital needs case_sensitive; missing period must use paragraph_end, not sentence_end.
+func TestCapitalAndPeriodDetectSemantics(t *testing.T) {
+	data := []byte(`
+rules:
+  - id: "readability/capital-sentence-start"
+    severity: 4
+    category: "readability"
+    detect:
+      sentence_start:
+        regex:
+          pattern: "[а-яё]"
+          case_sensitive: true
+  - id: "readability/sentence-final-punctuation"
+    severity: 3
+    category: "readability"
+    detect:
+      paragraph_end:
+        regex:
+          pattern: "[а-яёА-ЯЁa-zA-Z0-9»\")\\]]"
+          case_sensitive: true
+`)
+	parsed, err := ParseYAML(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var capital, period detect.Node
+	for _, r := range parsed {
+		switch r.ID().String() {
+		case "readability/capital-sentence-start":
+			capital = r.DetectNode()
+		case "readability/sentence-final-punctuation":
+			period = r.DetectNode()
+		}
+	}
+	if capital == nil || period == nil {
+		t.Fatal("detect nodes nil")
+	}
+
+	ok := "Дело было вечером. Делать было нечего."
+	if got := capital.Detect(ok); len(got) != 0 {
+		t.Fatalf("capital on OK text: %+v", got)
+	}
+	if got := period.Detect(ok); len(got) != 0 {
+		t.Fatalf("period on OK text: %+v", got)
+	}
+
+	badCap := "дело было вечером. делать было нечего."
+	if got := capital.Detect(badCap); len(got) != 2 {
+		t.Fatalf("capital on lower starts: got %+v", got)
+	}
+	if got := period.Detect("Дело было вечером"); len(got) != 1 {
+		t.Fatalf("period missing punct: got %+v", got)
+	}
+	if got := period.Detect("Дело было вечером."); len(got) != 0 {
+		t.Fatalf("period with punct: %+v", got)
 	}
 }
