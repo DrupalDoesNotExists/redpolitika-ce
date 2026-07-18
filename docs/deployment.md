@@ -1,11 +1,11 @@
 # Deployment
 
-## Run from Docker Hub (out of the box)
+## Run from GHCR (out of the box)
 
 ```bash
 docker run --rm -p 8080:8080 \
   -v "$PWD/rules:/etc/redpolitika/rules:ro" \
-  YOUR_DOCKERHUB_USER/redpolitika-ce:latest
+  ghcr.io/drupaldoesnotexists/redpolitika-ce:latest
 ```
 
 Open `http://localhost:8080`.
@@ -20,7 +20,7 @@ flags stay empty until you add rules).
 docker run --rm -p 8080:8080 \
   -v "$PWD/rules:/etc/redpolitika/rules:ro" \
   -v redpolitika-data:/data \
-  YOUR_DOCKERHUB_USER/redpolitika-ce:latest
+  ghcr.io/drupaldoesnotexists/redpolitika-ce:latest
 ```
 
 ## Docker Compose (build locally)
@@ -57,7 +57,7 @@ docker run --rm -p 8080:8080 \
   -e DB_DRIVER=postgres \
   -e DB_DSN="postgres://user:password@db:5432/redpolitika?sslmode=disable" \
   -v "$PWD/rules:/etc/redpolitika/rules:ro" \
-  YOUR_DOCKERHUB_USER/redpolitika-ce:latest
+  ghcr.io/drupaldoesnotexists/redpolitika-ce:latest
 ```
 
 Migrations apply automatically on first run.
@@ -89,15 +89,18 @@ docker run --rm -p 8080:8080 \
   redpolitika-ce:local
 ```
 
-## Docker Hub (CI release)
+## GHCR (CI release)
 
 On git tag `v*`, workflow `.github/workflows/release.yml` builds and pushes:
 
-- `{DOCKERHUB_USERNAME}/redpolitika-ce:latest`
-- `{DOCKERHUB_USERNAME}/redpolitika-ce:<version>`
-- `{DOCKERHUB_USERNAME}/redpolitika-ce:full`
+- `ghcr.io/<owner>/redpolitika-ce:latest`
+- `ghcr.io/<owner>/redpolitika-ce:<version>`
+- `ghcr.io/<owner>/redpolitika-ce:full`
 
-Repo secrets: `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`.
+Auth uses `GITHUB_TOKEN` (`packages: write`). No extra registry secrets.
+
+After the first push, set the package visibility to **public** in GitHub → Packages
+if anonymous `docker pull` should work without login.
 
 ## Related
 

@@ -18,13 +18,13 @@ Define your editorial style as YAML rules — `Redpolitika` checks text, flags v
 
 ## Quick start
 
-### Docker Hub
+### GHCR
 
 ```bash
 mkdir -p rules
 docker run --rm -p 8080:8080 \
   -v "$PWD/rules:/etc/redpolitika/rules:ro" \
-  YOUR_DOCKERHUB_USER/redpolitika-ce:latest
+  ghcr.io/drupaldoesnotexists/redpolitika-ce:latest
 ```
 
 Open `http://localhost:8080`. Put YAML rule files into `./rules` and restart (or remount).
