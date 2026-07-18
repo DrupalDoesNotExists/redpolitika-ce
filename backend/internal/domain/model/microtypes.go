@@ -2,7 +2,6 @@ package model
 
 import (
 	"fmt"
-	"strings"
 )
 
 // Domain value objects — struct with private field prevents external construction.
@@ -68,16 +67,13 @@ func CategoryFromString(v string) (Category, error) {
 }
 
 func DetectMethodFromString(v string) (DetectMethod, error) {
-	switch v {
-	case "regex", "wordlist", "expr", "llm", "plugin", "pattern", "function", "ner", "pos":
-		return DetectMethod{value: v}, nil
-	default:
-		// Accept scoped names (e.g., "plugin/method", "custom/ner")
-		if strings.Contains(v, "/") {
-			return DetectMethod{value: v}, nil
-		}
-		return DetectMethod{}, &DomainError{Op: "DetectMethodFromString", Message: "invalid detect method: " + v}
+	if v == "" {
+		return DetectMethod{}, &DomainError{Op: "DetectMethodFromString", Message: "detect method cannot be empty"}
 	}
+	// Accept any non-empty method name. Actual validation happens in
+	// detect.Build() — the registry knows which methods exist.
+	// CE does not restrict plugin-provided methods (ner, pos, llm, etc.).
+	return DetectMethod{value: v}, nil
 }
 
 // --- Value getters ---

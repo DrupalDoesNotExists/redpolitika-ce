@@ -70,17 +70,20 @@ func (m *Manager) ScanDir(ctx context.Context, reg *Registry, dir string) ([]str
 		raw, err := client.Client()
 		if err != nil {
 			client.Kill()
-			return nil, fmt.Errorf("plugin connect %s: %w", name, err)
+			m.logger.Error("plugin connect failed, skipping", zap.String("name", name), zap.Error(err))
+			continue
 		}
 		plug, err := raw.Dispense(name)
 		if err != nil {
 			client.Kill()
-			return nil, fmt.Errorf("plugin dispense %s: %w", name, err)
+			m.logger.Error("plugin dispense failed, skipping", zap.String("name", name), zap.Error(err))
+			continue
 		}
 		conn, ok := plug.(*grpc.ClientConn)
 		if !ok {
 			client.Kill()
-			return nil, fmt.Errorf("plugin %s: unexpected type %T", name, plug)
+			m.logger.Error("plugin unexpected type, skipping", zap.String("name", name), zap.String("type", fmt.Sprintf("%T", plug)))
+			continue
 		}
 
 		m.mu.Lock()
@@ -93,6 +96,17 @@ func (m *Manager) ScanDir(ctx context.Context, reg *Registry, dir string) ([]str
 	}
 
 	return registered, nil
+}
+
+// Status returns names of currently running plugins.
+func (m *Manager) Status() []string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	names := make([]string, 0, len(m.clients))
+	for name := range m.clients {
+		names = append(names, name)
+	}
+	return names
 }
 
 // StopAll kills all plugin processes.

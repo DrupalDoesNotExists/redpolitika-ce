@@ -25,7 +25,7 @@ type ProblemJSON struct {
 func writeProblem(c echo.Context, status int, title, detail string) error {
 	c.Response().Header().Set(echo.HeaderContentType, "application/problem+json")
 	return c.JSON(status, ProblemJSON{
-		Type:   "https://redpolitika.dev/errors/" + http.StatusText(status),
+		Type:   "/errors/" + http.StatusText(status),
 		Title:  title,
 		Status: status,
 		Detail: detail,

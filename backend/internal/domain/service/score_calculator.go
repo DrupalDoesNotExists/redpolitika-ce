@@ -34,7 +34,7 @@ func (c *ScoreCalculator) ComputeFromMap(
 	for category, flags := range grouped {
 		var penalty float64
 		for _, sf := range flags {
-			if !sf.Flag.IsPending() && sf.Flag.State() != model.FlagStateAccepted {
+			if !sf.Flag.IsPending() {
 				continue
 			}
 			penalty += float64(sf.Severity.Value())
@@ -74,7 +74,7 @@ func (c *ScoreCalculator) Compute(flags []*model.Flag, ruleIndex map[model.RuleI
 		if !ok {
 			continue
 		}
-		if !f.IsPending() && f.State() != model.FlagStateAccepted {
+		if !f.IsPending() {
 			continue
 		}
 		cat := rule.Category()

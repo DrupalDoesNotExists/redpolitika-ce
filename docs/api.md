@@ -6,13 +6,20 @@ Base URL: `http://localhost:8080`
 
 ## REST endpoints
 
-### `GET /health`
+### `GET /health` / `GET /healthz`
 
 ```json
 {
-  "status": "ok"
+  "status": "ok",
+  "plugins": ["redpolitika-ner"]
 }
 ```
+
+`plugins` lists running plugin binary names (empty if none).
+
+### `GET /metrics`
+
+Prometheus text exposition (`redpolitika_analyze_total`, `redpolitika_analyze_latency_seconds`, `redpolitika_flags_total`).
 
 ### `GET /version`
 
@@ -200,7 +207,7 @@ Errors follow RFC 7807 (Problem Details):
 
 ```json
 {
-  "type": "https://redpolitika.dev/errors/invalid-rule",
+  "type": "/errors/invalid-rule",
   "title": "Invalid rule",
   "status": 422,
   "detail": "regex pattern contains invalid syntax"

@@ -3,23 +3,25 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile
+    image: redpolitika-ce:local
     ports:
       - "8080:8080"
     environment:
-      - PORT=8080
-      - LOG_LEVEL=info
-      - ENVIRONMENT=development
-      - STATIC_DIR=/frontend/out
-      - DB_DRIVER=sqlite
-      - DB_DSN=file:/data/redpolitika.db?cache=shared&_journal_mode=WAL
-      - RULES_DIR=/etc/redpolitika/rules
-      - PLUGINS_DIR=/etc/redpolitika/plugins
+      PORT: "8080"
+      LOG_LEVEL: info
+      ENVIRONMENT: development
+      STATIC_DIR: /frontend/out
+      RULES_DIR: /etc/redpolitika/rules
+      PLUGINS_DIR: /etc/redpolitika/plugins
+      DB_DRIVER: sqlite
+      DB_DSN: file:/data/redpolitika.db?cache=shared&_journal_mode=WAL
     volumes:
-      - ../backend/rules:/etc/redpolitika/rules:ro
+      # Mount your YAML rules here (image ships with an empty dir)
+      - ./rules:/etc/redpolitika/rules:ro
       - ./plugins:/etc/redpolitika/plugins:ro
       - redpolitika_data:/data
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/health"]
       interval: 30s
       timeout: 3s
       retries: 3

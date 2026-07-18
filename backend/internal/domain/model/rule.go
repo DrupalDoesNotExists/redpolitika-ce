@@ -133,21 +133,33 @@ func (r *Rule) Disable() *Rule {
 // Detect runs this rule's detection against text.
 // Uses the method tree for detection and fix computation.
 // Returns matching Flags with per-paragraph occurrence tracking.
+// Inline suppressions (<!-- rp:disable -->) are honoured (E3).
 func (r *Rule) Detect(text *Text) []*Flag {
 	if !r.enabled || r.detectNode == nil {
 		return nil
 	}
 
+	content := text.Content()
+	suppressions := ParseSuppressions(content)
 	paras := text.Paragraphs()
 	var flags []*Flag
 
+	paraOffset := 0
 	for paraIdx, para := range paras {
 		if para == "" {
+			// empty paragraph still advances offset past the separator (except last)
+			if paraIdx < len(paras)-1 {
+				paraOffset += 2 // \n\n
+			}
 			continue
 		}
 
 		matches := r.detectNode.Detect(para)
 		if len(matches) == 0 {
+			paraOffset += len(para)
+			if paraIdx < len(paras)-1 {
+				paraOffset += 2
+			}
 			continue
 		}
 
@@ -157,6 +169,13 @@ func (r *Rule) Detect(text *Text) []*Flag {
 			if start < 0 || end > len(para) || start >= end {
 				continue
 			}
+
+			globalStart := paraOffset + start
+			globalEnd := paraOffset + end
+			if IsSuppressed(suppressions, r.id.Value(), globalStart, globalEnd) {
+				continue
+			}
+
 			matchStr := para[start:end]
 
 			key := matchStr
@@ -172,7 +191,13 @@ func (r *Rule) Detect(text *Text) []*Flag {
 
 			var autoFix *string
 			if r.fixNode != nil {
-				fixed := r.fixNode.Fix(matchStr)
+				ctx := fix.Context{
+					Text:   para,
+					Start:  start,
+					End:    end,
+					Groups: m.Groups,
+				}
+				fixed := r.fixNode.Fix(matchStr, ctx)
 				autoFix = &fixed
 			}
 
@@ -192,6 +217,11 @@ func (r *Rule) Detect(text *Text) []*Flag {
 				continue
 			}
 			flags = append(flags, flag)
+		}
+
+		paraOffset += len(para)
+		if paraIdx < len(paras)-1 {
+			paraOffset += 2
 		}
 	}
 	return flags

@@ -2,6 +2,7 @@ package http
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/labstack/echo/v4"
 
@@ -12,11 +13,12 @@ import (
 // AnalyzeHandler handles text analysis requests.
 type AnalyzeHandler struct {
 	analyzeUC *usecase.AnalyzeTextUseCase
+	health    *HealthHandler
 }
 
 // NewAnalyzeHandler creates an AnalyzeHandler.
-func NewAnalyzeHandler(analyzeUC *usecase.AnalyzeTextUseCase) *AnalyzeHandler {
-	return &AnalyzeHandler{analyzeUC: analyzeUC}
+func NewAnalyzeHandler(analyzeUC *usecase.AnalyzeTextUseCase, health *HealthHandler) *AnalyzeHandler {
+	return &AnalyzeHandler{analyzeUC: analyzeUC, health: health}
 }
 
 type analyzeRequest struct {
@@ -31,6 +33,7 @@ func (h *AnalyzeHandler) Handle(c echo.Context) error {
 	}
 
 	full := c.QueryParam("full") == "true"
+	start := time.Now()
 
 	result, err := h.analyzeUC.Execute(c.Request().Context(), usecase.AnalyzeRequest{
 		Text: req.Text,
@@ -38,6 +41,14 @@ func (h *AnalyzeHandler) Handle(c echo.Context) error {
 	})
 	if err != nil {
 		return err
+	}
+
+	flagCount := 0
+	if result.Analysis != nil {
+		flagCount = len(result.Analysis.Flags())
+	}
+	if h.health != nil {
+		h.health.ObserveAnalyze(time.Since(start), flagCount)
 	}
 
 	resp := dto.NewAnalysisResponse(result.Analysis, "")

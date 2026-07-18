@@ -152,12 +152,12 @@ detect:
 
 #### `case`
 
-Check character case of child match.
+Check character case of the child match (or `\S+` words if no child).
 
 ```yaml
 detect:
   case:
-    mode: "upper"   # "upper" | "lower" | "title"
+    mode: "all_caps"   # all_caps | all_lower | capitalized | has_upper | has_lower
     child:
       wordlist:
         list: ["москва"]
@@ -167,7 +167,8 @@ detect:
 
 #### `before`, `after`
 
-Match must be preceded/followed by pattern within distance.
+Return **child** matches that have `pattern` within `max_chars` before/after them.
+Without `pattern`, falls back to one character before/after each child match.
 
 ```yaml
 detect:
@@ -196,7 +197,7 @@ detect:
 
 #### `position`
 
-First or last paragraph only.
+First/last paragraph (`type`) with optional child, or numeric `from`/`to` (compat).
 
 ```yaml
 detect:
@@ -207,11 +208,65 @@ detect:
         list: ["введение"]
 ```
 
+#### `threshold`
+
+Flag inner matches only when count ≥ `count` per window.
+
+```yaml
+detect:
+  threshold:
+    count: 3
+    per: words          # words | paragraph | text
+    window: 100         # for per=words
+    child:
+      wordlist:
+        list: ["вроде"]
+```
+
+#### `near`
+
+Flag `pattern` matches that have a second pattern nearby.
+
+```yaml
+detect:
+  near:
+    pattern:
+      wordlist: { list: ["X"] }
+    near:
+      wordlist: { list: ["Y"] }
+    window: sentence    # sentence | chars:N | integer chars
+```
+
+#### `exclude`
+
+Sugar over `and` + `not` + `wordlist`: keep child matches except whitelist words.
+
+```yaml
+detect:
+  exclude:
+    list: ["ёлка", "ёжик"]
+    case_sensitive: false
+    child:
+      regex: "[а-яА-ЯёЁ]*ё[а-яА-ЯёЁ]*"
+```
+
+Equivalent composite:
+
+```yaml
+detect:
+  and:
+    - regex: "[а-яА-ЯёЁ]*ё[а-яА-ЯёЁ]*"
+    - not:
+        wordlist:
+          list: ["ёлка", "ёжик"]
+```
+
 ### Logical operators
 
 #### `and`
 
-Intersection — all children must match.
+Intersection — all children must match. Nested `not` children act as **exclusions**
+(subtracted from the intersection), not as standalone negation.
 
 ```yaml
 detect:
@@ -235,9 +290,18 @@ detect:
 
 #### `not`
 
-Negate child.
+**Only meaningful as an exclusion inside `and`.** Standalone `not` returns its
+child matches unchanged (does not invert the document).
 
 ```yaml
+# Correct — exclude whitelist inside and:
+detect:
+  and:
+    - wordlist: { list: ["ещё", "всё"] }
+    - not:
+        wordlist: { list: ["всё"] }
+
+# Standalone not — returns child matches (no inversion):
 detect:
   not:
     contains:
@@ -262,9 +326,30 @@ detect:
 
 ---
 
+## Inline suppressions
+
+Disable rules for a span of the document (HTML comments, stripped from scoring only):
+
+```text
+<!-- rp:disable redundancy/very -->
+это очень важно
+<!-- rp:enable -->
+
+одна строка <!-- rp:disable-line redundancy/very -->
+```
+
+Omit `rule-id` to suppress all rules in the range. `rp:disable-line` covers the whole line.
+
+---
+
 ## Fix tree
 
 Optional. Without it, rule flags only.
+
+**Limitation (B1):** every fix sees the match string plus a context
+`(text, start, end, groups)` — the paragraph text, match span, and detect
+capture groups. Fixes still **replace only the match span** in the document;
+they cannot expand/shrink the edit beyond that span via the fix tree alone.
 
 ### Leaf methods
 
@@ -285,11 +370,33 @@ fix:
 
 #### `regex_replace`
 
+Applies to the **match text only**, never to the whole document.
+If the detect `regex` had capture groups, `$1` / `$2` / `${1}` in `replacement`
+are filled from those detect groups (E4). Otherwise `pattern` runs on the match.
+
 ```yaml
+detect:
+  regex: "(у нас) (есть)"
 fix:
   regex_replace:
-    pattern: "(\\w+) (\\w+)"
+    pattern: ".*"
     replacement: "$2, $1"
+# → "есть, у нас"
+```
+
+#### `when`
+
+Apply nested fix only if a detect condition matches the match string.
+
+```yaml
+fix:
+  when:
+    detect:
+      case: { mode: all_lower }
+    then:
+      regex_replace:
+        pattern: "ё"
+        replacement: "е"
 ```
 
 #### Case transforms
@@ -312,7 +419,7 @@ fix:
 ```
 ```yaml
 fix:
-  title_case: {}       # each word uppercase
+  title_case: {}       # each word title-cased (Unicode-aware)
 ```
 
 #### Text manipulation
@@ -355,20 +462,26 @@ fix:
 
 ---
 
+## Scoring
+
+Two scores: cleanliness and readability (0–10). Penalty = severity of each
+**pending** (raised) flag, normalised per 100 words.
+
+**Accept semantics:** accepting a flag means the problem is resolved for scoring —
+accepted flags do **not** reduce the score (same as rejected). Only pending flags penalise.
+
+---
+
 ## Rule loading
 
-redpolitika loads rules from directories (default: `./rules`). Supports three layers:
+redpolitika loads rules from directories you provide (nothing is bundled in the image).
+Three layers (deep-merge by `id`):
 
-1. **Base** — shipped defaults
-2. **Project** — project overrides
-3. **Override** — per-env overrides
+1. **Base** — `RULES_DIR` (default `./rules`)
+2. **Project** — `RULES_PROJECT_DIR`
+3. **Override** — `RULES_OVERRIDE_DIR`
 
-Set via environment variables:
-- `RULES_DIR` — base layer
-- `RULES_PROJECT_DIR` — project layer
-- `RULES_OVERRIDE_DIR` — override layer
-
-Layers are deep-merged by `id`. To disable a rule, provide override with same `id` and no `detect`.
+To disable a rule, provide override with same `id` and no `detect`.
 
 ---
 

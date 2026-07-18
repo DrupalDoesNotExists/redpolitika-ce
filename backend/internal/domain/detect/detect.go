@@ -24,9 +24,11 @@ func (e *Error) Error() string {
 
 // MatchRange represents a text match position [Start, End).
 // Start is inclusive, End is exclusive (like Go slice bounds).
+// Groups holds optional regex submatches: [0]=full match, [1]=first capture, …
 type MatchRange struct {
-	Start int
-	End   int
+	Start  int
+	End    int
+	Groups []string
 }
 
 // Node is the detection interface. Every detection method implements this.
@@ -292,7 +294,19 @@ func (n *RegexNode) Detect(text string) []MatchRange {
 		if start == end {
 			continue
 		}
-		out = append(out, MatchRange{Start: start, End: end})
+		mr := MatchRange{Start: start, End: end}
+		if len(m) > 2 {
+			nGroups := len(m) / 2
+			groups := make([]string, nGroups)
+			for i := 0; i < nGroups; i++ {
+				gs, ge := m[i*2], m[i*2+1]
+				if gs >= 0 && ge >= gs && ge <= len(text) {
+					groups[i] = text[gs:ge]
+				}
+			}
+			mr.Groups = groups
+		}
+		out = append(out, mr)
 	}
 	return out
 }
@@ -541,15 +555,25 @@ func (n *WordBoundaryNode) Detect(text string) []MatchRange {
 }
 
 // LengthNode matches text ranges whose length falls within [Min, Max].
-// Scans for non-whitespace runs (word-level granularity).
+// If Inner is set, filters Inner matches by length; otherwise scans \S+ runs.
 type LengthNode struct {
-	Min int
-	Max int // 0 = no limit
+	Min   int  // minimum length (inclusive)
+	Max   int  // maximum length (inclusive, 0 = no limit)
+	Inner Node // optional child filter
 }
 
 func (n *LengthNode) Detect(text string) []MatchRange {
-	wordRe := regexp.MustCompile(`\S+`)
-	matches := wordRe.FindAllStringIndex(text, -1)
+	var matches [][]int
+	if n.Inner != nil {
+		inner := n.Inner.Detect(text)
+		matches = make([][]int, len(inner))
+		for i, m := range inner {
+			matches[i] = []int{m.Start, m.End}
+		}
+	} else {
+		wordRe := regexp.MustCompile(`\S+`)
+		matches = wordRe.FindAllStringIndex(text, -1)
+	}
 	var out []MatchRange
 	for _, m := range matches {
 		length := m[1] - m[0]
@@ -572,13 +596,24 @@ const (
 )
 
 // CaseNode matches text ranges with specific case properties.
+// If Inner is set, filters Inner matches by case; otherwise scans \S+ runs.
 type CaseNode struct {
-	Mode CaseMode
+	Mode  CaseMode
+	Inner Node // optional child filter
 }
 
 func (n *CaseNode) Detect(text string) []MatchRange {
-	wordRe := regexp.MustCompile(`\S+`)
-	matches := wordRe.FindAllStringIndex(text, -1)
+	var matches [][]int
+	if n.Inner != nil {
+		inner := n.Inner.Detect(text)
+		matches = make([][]int, len(inner))
+		for i, m := range inner {
+			matches[i] = []int{m.Start, m.End}
+		}
+	} else {
+		wordRe := regexp.MustCompile(`\S+`)
+		matches = wordRe.FindAllStringIndex(text, -1)
+	}
 	var out []MatchRange
 
 	for _, m := range matches {
@@ -638,33 +673,105 @@ func checkCase(mode CaseMode, s string) bool {
 	return false
 }
 
-// BeforeNode matches the character immediately before each match of the inner node.
+// BeforeNode matches text within max_chars before an anchor pattern, using child detection.
+// children ordering: [0]=Inner (detection to apply), [1]=Pattern (anchor).
+// If Pattern is nil, falls back to returning 1 char before each Inner match.
 type BeforeNode struct {
-	Inner Node
+	Inner    Node
+	Pattern  Node
+	MaxChars int
 }
 
 func (n *BeforeNode) Detect(text string) []MatchRange {
-	inner := n.Inner.Detect(text)
+	if n.Pattern == nil {
+		// Backward compat: 1 char before each inner match
+		inner := n.Inner.Detect(text)
+		var out []MatchRange
+		for _, m := range inner {
+			if m.Start > 0 {
+				out = append(out, MatchRange{Start: m.Start - 1, End: m.Start})
+			}
+		}
+		return out
+	}
+
+	anchors := n.Pattern.Detect(text)
+	seen := make(map[int]bool)
 	var out []MatchRange
-	for _, m := range inner {
-		if m.Start > 0 {
-			out = append(out, MatchRange{Start: m.Start - 1, End: m.Start})
+	maxChars := n.MaxChars
+	if maxChars <= 0 {
+		maxChars = 80
+	}
+	for _, a := range anchors {
+		windowEnd := a.Start
+		windowStart := windowEnd - maxChars
+		if windowStart < 0 {
+			windowStart = 0
+		}
+		if windowStart >= windowEnd {
+			continue
+		}
+		window := text[windowStart:windowEnd]
+		innerMatches := n.Inner.Detect(window)
+		for _, m := range innerMatches {
+			adj := MatchRange{Start: m.Start + windowStart, End: m.End + windowStart}
+			if seen[adj.Start] {
+				continue
+			}
+			seen[adj.Start] = true
+			out = append(out, adj)
 		}
 	}
 	return out
 }
 
-// AfterNode matches the character immediately after each match of the inner node.
+// AfterNode matches text within max_chars after an anchor pattern, using child detection.
+// children ordering: [0]=Inner (detection to apply), [1]=Pattern (anchor).
+// If Pattern is nil, falls back to returning 1 char after each Inner match.
 type AfterNode struct {
-	Inner Node
+	Inner    Node
+	Pattern  Node
+	MaxChars int
 }
 
 func (n *AfterNode) Detect(text string) []MatchRange {
-	inner := n.Inner.Detect(text)
+	if n.Pattern == nil {
+		// Backward compat: 1 char after each inner match
+		inner := n.Inner.Detect(text)
+		var out []MatchRange
+		for _, m := range inner {
+			if m.End < len(text) {
+				out = append(out, MatchRange{Start: m.End, End: m.End + 1})
+			}
+		}
+		return out
+	}
+
+	anchors := n.Pattern.Detect(text)
+	seen := make(map[int]bool)
 	var out []MatchRange
-	for _, m := range inner {
-		if m.End < len(text) {
-			out = append(out, MatchRange{Start: m.End, End: m.End + 1})
+	maxChars := n.MaxChars
+	if maxChars <= 0 {
+		maxChars = 80
+	}
+	for _, a := range anchors {
+		windowStart := a.End
+		windowEnd := windowStart + maxChars
+		if windowEnd > len(text) {
+			windowEnd = len(text)
+		}
+		if windowStart >= windowEnd {
+			continue
+		}
+		window := text[windowStart:windowEnd]
+		innerMatches := n.Inner.Detect(window)
+		for _, m := range innerMatches {
+			adj := MatchRange{Start: m.Start + windowStart, End: m.End + windowStart}
+			if seen[adj.Start] {
+				continue
+			}
+			seen[adj.Start] = true
+			out = append(out, adj)
 		}
 	}
 	return out
@@ -699,13 +806,40 @@ func (n *SurroundedByNode) Detect(text string) []MatchRange {
 	return out
 }
 
-// PositionNode matches at specific character position range.
+// PositionNode matches at specific character position range or paragraph type.
 type PositionNode struct {
-	From int
-	To   int // 0 = end of text
+	From  int    // character position, -1 when using type
+	To    int    // 0 = end of text
+	Type  string // "first_paragraph", "last_paragraph", or "" for numeric From/To
+	Inner Node   // child detection (used with type-based position)
 }
 
 func (n *PositionNode) Detect(text string) []MatchRange {
+	switch n.Type {
+	case "first_paragraph":
+		end := strings.Index(text, "\n\n")
+		if end < 0 {
+			end = len(text)
+		}
+		if n.Inner != nil {
+			return filterByRange(n.Inner.Detect(text), 0, end)
+		}
+		return []MatchRange{{Start: 0, End: end}}
+
+	case "last_paragraph":
+		start := strings.LastIndex(text, "\n\n")
+		if start < 0 {
+			start = 0
+		} else {
+			start += 2 // skip past \n\n
+		}
+		if n.Inner != nil {
+			return filterByRange(n.Inner.Detect(text), start, len(text))
+		}
+		return []MatchRange{{Start: start, End: len(text)}}
+	}
+
+	// Numeric position (original From/To behavior)
 	if n.From < 0 {
 		return nil
 	}
@@ -717,6 +851,314 @@ func (n *PositionNode) Detect(text string) []MatchRange {
 		return nil
 	}
 	return []MatchRange{{Start: n.From, End: to}}
+}
+
+// filterByRange returns matches whose range falls entirely within [lo, hi).
+func filterByRange(matches []MatchRange, lo, hi int) []MatchRange {
+	var out []MatchRange
+	for _, m := range matches {
+		if m.Start >= lo && m.End <= hi {
+			out = append(out, m)
+		}
+	}
+	return out
+}
+
+// ---------------------------------------------------------------------------
+//  ThresholdNode — flags matches only when Inner matches >= Count times
+//  per window (words, paragraph, or whole text).
+// ---------------------------------------------------------------------------
+
+// ThresholdMode represents the window type for threshold detection.
+type ThresholdMode string
+
+const (
+	ThresholdPerWords     ThresholdMode = "words"
+	ThresholdPerParagraph ThresholdMode = "paragraph"
+	ThresholdPerText      ThresholdMode = "text"
+)
+
+// ThresholdNode flags matches only when Inner matches >= Count times per window.
+type ThresholdNode struct {
+	Count  int
+	Per    ThresholdMode
+	Window int // word window size (for per=words, default 100)
+	Inner  Node
+}
+
+func (n *ThresholdNode) Detect(text string) []MatchRange {
+	if n.Inner == nil {
+		return nil
+	}
+
+	// Run inner detection
+	allMatches := n.Inner.Detect(text)
+	if len(allMatches) == 0 {
+		return nil
+	}
+
+	switch n.Per {
+	case ThresholdPerText:
+		// Check if total matches >= Count across whole text
+		if len(allMatches) >= n.Count {
+			return allMatches
+		}
+		return nil
+
+	case ThresholdPerParagraph:
+		return n.detectPerParagraph(text, allMatches)
+
+	default: // ThresholdPerWords
+		return n.detectPerWords(text, allMatches)
+	}
+}
+
+func (n *ThresholdNode) detectPerParagraph(text string, allMatches []MatchRange) []MatchRange {
+	bounds := paragraphBoundaries(text)
+	var result []MatchRange
+	for _, p := range bounds {
+		var countInPara int
+		var matchesInPara []MatchRange
+		for _, m := range allMatches {
+			if m.Start >= p.Start && m.End <= p.End {
+				countInPara++
+				matchesInPara = append(matchesInPara, m)
+			}
+		}
+		if countInPara >= n.Count {
+			result = append(result, matchesInPara...)
+		}
+	}
+	return result
+}
+
+func (n *ThresholdNode) detectPerWords(text string, allMatches []MatchRange) []MatchRange {
+	words := strings.Fields(text)
+	window := n.Window
+	if window <= 0 {
+		window = 100
+	}
+	if len(words) == 0 {
+		return nil
+	}
+
+	// Map each match to word index (word containing its start position)
+	matchToWord := make([]int, len(allMatches))
+	for i, m := range allMatches {
+		matchToWord[i] = wordCountIn(text[:m.Start])
+	}
+
+	// Sliding window with 50% overlap
+	step := window / 2
+	if step < 1 {
+		step = 1
+	}
+	var result []MatchRange
+	seen := make(map[int]bool) // dedup by Start position
+	for wi := 0; wi < len(words); wi += step {
+		endWord := wi + window
+		if endWord > len(words) {
+			endWord = len(words)
+		}
+
+		// Collect matches in this window
+		var inWindow []MatchRange
+		for i, m := range allMatches {
+			if matchToWord[i] >= wi && matchToWord[i] < endWord && !seen[m.Start] {
+				inWindow = append(inWindow, m)
+			}
+		}
+
+		if len(inWindow) >= n.Count {
+			for _, m := range inWindow {
+				if !seen[m.Start] {
+					seen[m.Start] = true
+					result = append(result, m)
+				}
+			}
+		}
+	}
+
+	return result
+}
+
+// ---------------------------------------------------------------------------
+//  NearNode — flags Pattern matches that have a Near match within a window
+// ---------------------------------------------------------------------------
+
+// NearWindowMode is the proximity window for NearNode.
+type NearWindowMode string
+
+const (
+	NearWindowSentence NearWindowMode = "sentence"
+	NearWindowChars    NearWindowMode = "chars"
+)
+
+// NearNode returns Pattern matches that have at least one Near match in the same
+// sentence or within Chars characters (either direction).
+type NearNode struct {
+	Pattern Node
+	Near    Node
+	Mode    NearWindowMode
+	Chars   int // used when Mode == NearWindowChars
+}
+
+func (n *NearNode) Detect(text string) []MatchRange {
+	if n.Pattern == nil || n.Near == nil {
+		return nil
+	}
+	patterns := n.Pattern.Detect(text)
+	nears := n.Near.Detect(text)
+	if len(patterns) == 0 || len(nears) == 0 {
+		return nil
+	}
+
+	var out []MatchRange
+	seen := make(map[int]bool)
+
+	switch n.Mode {
+	case NearWindowChars:
+		chars := n.Chars
+		if chars <= 0 {
+			chars = 80
+		}
+		for _, p := range patterns {
+			for _, q := range nears {
+				if rangesOverlapOrTouch(p, q) {
+					continue // same/overlapping span — not "near"
+				}
+				dist := rangeDistance(p, q)
+				if dist <= chars && !seen[p.Start] {
+					seen[p.Start] = true
+					out = append(out, p)
+					break
+				}
+			}
+		}
+	default: // sentence
+		bounds := sentenceSpanBoundaries(text)
+		for _, p := range patterns {
+			si := sentenceIndexOf(bounds, p.Start)
+			if si < 0 {
+				continue
+			}
+			for _, q := range nears {
+				if sentenceIndexOf(bounds, q.Start) == si && !seen[p.Start] {
+					seen[p.Start] = true
+					out = append(out, p)
+					break
+				}
+			}
+		}
+	}
+	return out
+}
+
+func rangeDistance(a, b MatchRange) int {
+	if a.End <= b.Start {
+		return b.Start - a.End
+	}
+	if b.End <= a.Start {
+		return a.Start - b.End
+	}
+	return 0 // overlapping
+}
+
+func rangesOverlapOrTouch(a, b MatchRange) bool {
+	return a.Start < b.End && b.Start < a.End
+}
+
+// sentenceSpanBoundaries returns [start,end) spans for each sentence.
+func sentenceSpanBoundaries(text string) []MatchRange {
+	if text == "" {
+		return nil
+	}
+	var spans []MatchRange
+	start := 0
+	for i := 0; i < len(text); i++ {
+		c := text[i]
+		if c == '.' || c == '!' || c == '?' {
+			end := i + 1
+			spans = append(spans, MatchRange{Start: start, End: end})
+			// skip whitespace after punct
+			j := end
+			for j < len(text) && (text[j] == ' ' || text[j] == '\t' || text[j] == '\n' || text[j] == '\r') {
+				j++
+			}
+			start = j
+			i = j - 1
+		}
+	}
+	if start < len(text) {
+		spans = append(spans, MatchRange{Start: start, End: len(text)})
+	}
+	if len(spans) == 0 {
+		spans = []MatchRange{{Start: 0, End: len(text)}}
+	}
+	return spans
+}
+
+func sentenceIndexOf(spans []MatchRange, pos int) int {
+	for i, s := range spans {
+		if pos >= s.Start && pos < s.End {
+			return i
+		}
+	}
+	if len(spans) > 0 && pos == spans[len(spans)-1].End {
+		return len(spans) - 1
+	}
+	return -1
+}
+
+// parboundary represents a paragraph boundary range.
+type parboundary struct {
+	Start int
+	End   int
+}
+
+// splitParagraphs returns start positions of each paragraph.
+func splitParagraphs(text string) []int {
+	var starts []int
+	starts = append(starts, 0)
+	for i := 0; i < len(text); i++ {
+		if i+1 < len(text) && text[i] == '\n' && text[i+1] == '\n' {
+			j := i + 2
+			for j < len(text) && (text[j] == '\n' || text[j] == '\r') {
+				j++
+			}
+			if j < len(text) {
+				starts = append(starts, j)
+			}
+			i = j - 1
+		}
+	}
+	return starts
+}
+
+// paragraphBoundaries returns start/end ranges for each paragraph.
+func paragraphBoundaries(text string) []parboundary {
+	starts := splitParagraphs(text)
+	bounds := make([]parboundary, len(starts))
+	for i, s := range starts {
+		end := len(text)
+		if i+1 < len(starts) {
+			end = starts[i+1]
+			// Trim trailing whitespace from end
+			for end > s && (text[end-1] == '\n' || text[end-1] == '\r' || text[end-1] == ' ') {
+				end--
+			}
+		}
+		bounds[i] = parboundary{Start: s, End: end}
+	}
+	return bounds
+}
+
+// wordCountIn returns number of whitespace-separated tokens in text.
+func wordCountIn(text string) int {
+	if strings.TrimSpace(text) == "" {
+		return 0
+	}
+	return len(strings.Fields(text))
 }
 
 // ---------------------------------------------------------------------------
@@ -809,7 +1251,11 @@ func init() {
 	Register("length", func(args map[string]interface{}, children []Node) (Node, error) {
 		min := intArg(args, "min", 1)
 		max := intArg(args, "max", 0)
-		return &LengthNode{Min: min, Max: max}, nil
+		n := &LengthNode{Min: min, Max: max}
+		if len(children) > 0 {
+			n.Inner = children[0]
+		}
+		return n, nil
 	})
 
 	Register("case", func(args map[string]interface{}, children []Node) (Node, error) {
@@ -823,21 +1269,33 @@ func init() {
 		default:
 			return nil, &Error{Op: "case", Message: "unknown case mode: " + modeStr}
 		}
-		return &CaseNode{Mode: mode}, nil
+		n := &CaseNode{Mode: mode}
+		if len(children) > 0 {
+			n.Inner = children[0]
+		}
+		return n, nil
 	})
 
 	Register("before", func(args map[string]interface{}, children []Node) (Node, error) {
 		if len(children) == 0 {
 			return nil, &Error{Op: "before", Message: "requires a child node (use args) to define what to look before"}
 		}
-		return &BeforeNode{Inner: children[0]}, nil
+		n := &BeforeNode{Inner: children[0], MaxChars: intArg(args, "max", 80)}
+		if len(children) > 1 {
+			n.Pattern = children[1]
+		}
+		return n, nil
 	})
 
 	Register("after", func(args map[string]interface{}, children []Node) (Node, error) {
 		if len(children) == 0 {
 			return nil, &Error{Op: "after", Message: "requires a child node (use args) to define what to look after"}
 		}
-		return &AfterNode{Inner: children[0]}, nil
+		n := &AfterNode{Inner: children[0], MaxChars: intArg(args, "max", 80)}
+		if len(children) > 1 {
+			n.Pattern = children[1]
+		}
+		return n, nil
 	})
 
 	Register("surrounded_by", func(args map[string]interface{}, children []Node) (Node, error) {
@@ -850,12 +1308,115 @@ func init() {
 	})
 
 	Register("position", func(args map[string]interface{}, children []Node) (Node, error) {
+		posType := strArg(args, "type")
+		if posType == "first_paragraph" || posType == "last_paragraph" {
+			var inner Node
+			if len(children) > 0 {
+				inner = children[0]
+			}
+			return &PositionNode{Type: posType, Inner: inner}, nil
+		}
 		from := intArg(args, "from", -1)
 		to := intArg(args, "to", 0)
 		if from < 0 {
 			return nil, &Error{Op: "position", Message: "from is required"}
 		}
 		return &PositionNode{From: from, To: to}, nil
+	})
+
+	Register("threshold", func(args map[string]interface{}, children []Node) (Node, error) {
+		count := intArg(args, "count", 0)
+		if count < 1 {
+			return nil, &Error{Op: "threshold", Message: "count is required (min 1)"}
+		}
+
+		per := strArg(args, "per")
+		if per == "" {
+			per = "words"
+		}
+
+		window := intArg(args, "window", 100)
+		if window <= 0 {
+			window = 100
+		}
+
+		var inner Node
+		if len(children) > 0 {
+			inner = children[0]
+		}
+		if inner == nil {
+			return nil, &Error{Op: "threshold", Message: "requires a child node"}
+		}
+
+		return &ThresholdNode{
+			Count:  count,
+			Per:    ThresholdMode(per),
+			Window: window,
+			Inner:  inner,
+		}, nil
+	})
+
+	Register("near", func(args map[string]interface{}, children []Node) (Node, error) {
+		if len(children) < 2 {
+			return nil, &Error{Op: "near", Message: "requires pattern and near child nodes"}
+		}
+		n := &NearNode{Pattern: children[0], Near: children[1]}
+
+		windowArg := args["window"]
+		switch v := windowArg.(type) {
+		case string:
+			if v == "sentence" {
+				n.Mode = NearWindowSentence
+			} else if strings.HasPrefix(v, "chars:") {
+				var chars int
+				if _, err := fmt.Sscanf(v, "chars:%d", &chars); err == nil && chars > 0 {
+					n.Mode = NearWindowChars
+					n.Chars = chars
+				} else {
+					return nil, &Error{Op: "near", Message: "invalid window: " + v}
+				}
+			} else {
+				return nil, &Error{Op: "near", Message: "window must be 'sentence', 'chars:N', or integer"}
+			}
+		case int:
+			if v <= 0 {
+				return nil, &Error{Op: "near", Message: "window chars must be > 0"}
+			}
+			n.Mode = NearWindowChars
+			n.Chars = v
+		case float64:
+			chars := int(v)
+			if chars <= 0 {
+				return nil, &Error{Op: "near", Message: "window chars must be > 0"}
+			}
+			n.Mode = NearWindowChars
+			n.Chars = chars
+		case nil:
+			n.Mode = NearWindowSentence
+		default:
+			return nil, &Error{Op: "near", Message: "invalid window type"}
+		}
+		return n, nil
+	})
+
+	Register("exclude", func(args map[string]interface{}, children []Node) (Node, error) {
+		if len(children) == 0 {
+			return nil, &Error{Op: "exclude", Message: "requires a child node"}
+		}
+		list := strSliceArg(args, "list")
+		if len(list) == 0 {
+			list = strSliceArg(args, "words")
+		}
+		if len(list) == 0 {
+			return nil, &Error{Op: "exclude", Message: "list (whitelist) is required"}
+		}
+		caseSensitive := boolArg(args, "case_sensitive", false)
+		return &AndNode{Children: []Node{
+			children[0],
+			&NotNode{Children: []Node{
+				&WordlistNode{Words: list, CaseSensitive: caseSensitive},
+			}},
+		}}, nil
 	})
 
 	Register("and", func(args map[string]interface{}, children []Node) (Node, error) {

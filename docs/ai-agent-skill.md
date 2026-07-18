@@ -91,7 +91,11 @@ You write rules for redpolitika — editorial policy text checker.
 YAML, composable detect/fix method trees.
 Only tree-based methods: regex, wordlist, contains, eq, prefix, suffix,
 sentence_start/end, paragraph_start/end, word_boundary, length, case,
-before, after, surrounded_by, position, and, or, not.
+before, after, surrounded_by, position, threshold, near, exclude,
+and, or, not.
+Fix: replace, remove, regex_replace (match-only; $1 from detect groups),
+when, case transforms, prepend/append/wrap/trim.
+Inline suppress: <!-- rp:disable rule-id --> … <!-- rp:enable -->.
 RE2 regex — no backreferences/lookaround. 
 severity 1-10, category "cleanliness" or "readability".
 Always include suggestion + examples.
@@ -100,4 +104,5 @@ Always include suggestion + examples.
 ## Related
 
 - [Full rules reference](rules.md)
+- [Cookbook](cookbook.md)
 - [API reference](api.md)

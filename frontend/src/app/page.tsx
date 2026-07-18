@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useRef, useCallback, useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useStore } from "@/lib/store";
@@ -232,9 +232,64 @@ function HomeContent() {
   const activeFlags = Object.values(flags).filter(
     (f) => f.status !== "applied",
   );
+  const navigableFlags = useMemo(
+    () =>
+      Object.values(flags)
+        .filter((f) => f.status !== "applied" && f.status !== "rejected")
+        .sort((a, b) => a.span.from - b.span.from || a.span.to - b.span.to),
+    [flags],
+  );
   const acceptedCount = Object.values(flags).filter(
     (f) => f.status !== "rejected" && f.status !== "applied" && f.autoFix !== undefined,
   ).length;
+
+  /* ---------- Keyboard: next/prev flag (Alt+↓ / Alt+↑) ---------- */
+  const selectFlagById = useCallback(
+    (flagId: string) => {
+      handleFlagClick(flagId);
+      requestAnimationFrame(() => {
+        document
+          .querySelector(`[data-flag-id="${flagId}"]`)
+          ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      });
+    },
+    [handleFlagClick],
+  );
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.altKey || e.metaKey || e.ctrlKey) return;
+      if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+      if (navigableFlags.length === 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      const curIdx = selectedFlag
+        ? navigableFlags.findIndex((f) => f.id === selectedFlag.id)
+        : -1;
+      let nextIdx: number;
+      if (e.key === "ArrowDown") {
+        nextIdx = curIdx < 0 ? 0 : (curIdx + 1) % navigableFlags.length;
+      } else {
+        nextIdx =
+          curIdx < 0
+            ? navigableFlags.length - 1
+            : (curIdx - 1 + navigableFlags.length) % navigableFlags.length;
+      }
+      selectFlagById(navigableFlags[nextIdx].id);
+    };
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && selectedFlag) {
+        setSelectedFlag(null);
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    window.addEventListener("keydown", onEsc);
+    return () => {
+      window.removeEventListener("keydown", onKey, true);
+      window.removeEventListener("keydown", onEsc);
+    };
+  }, [navigableFlags, selectedFlag, selectFlagById]);
 
   /* ---------- JSX ---------- */
   return (

@@ -19,7 +19,9 @@ func RegisterRoutes(
 ) {
 	// Health
 	e.GET("/health", health.Health)
+	e.GET("/healthz", health.Health)
 	e.GET("/version", health.Version)
+	e.GET("/metrics", health.Metrics())
 
 	// API
 	e.GET("/api/client-rules", clientRules.Handle)

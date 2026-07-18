@@ -18,11 +18,10 @@ docs-ai/
 frontend/AGENTS.md
 frontend/CLAUDE.md
 
-# User-provided rules (default search path)
-backend/rules/
-
-# Obsolete test page
-backend/static/
+# User-provided YAML rule packs (not shipped; mount at runtime via RULES_DIR)
+/backend/rules/
+/deploy/rules/
+/rules/
 
 # Go vendor
 vendor/

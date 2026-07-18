@@ -18,8 +18,22 @@ Define your editorial style as YAML rules — `Redpolitika` checks text, flags v
 
 ## Quick start
 
+### Docker Hub
+
 ```bash
-docker compose -f deploy/docker-compose.yml up
+mkdir -p rules
+docker run --rm -p 8080:8080 \
+  -v "$PWD/rules:/etc/redpolitika/rules:ro" \
+  YOUR_DOCKERHUB_USER/redpolitika-ce:latest
+```
+
+Open `http://localhost:8080`. Put YAML rule files into `./rules` and restart (or remount).
+
+### Build locally
+
+```bash
+mkdir -p deploy/rules deploy/plugins
+docker compose -f deploy/docker-compose.yml up --build
 ```
 
 Open `http://localhost:8080`. Paste text, see flags.

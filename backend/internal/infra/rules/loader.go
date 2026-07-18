@@ -70,9 +70,14 @@ func (l *Loader) LoadAll(ctx context.Context) (*model.RuleSet, error) {
 }
 
 // loadDir reads all .yaml and .yml files in a directory and returns parsed rules.
+// Missing directory is treated as an empty layer (no error) so the image can
+// start without mounted rules.
 func (l *Loader) loadDir(dir string) ([]*model.Rule, uint64, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, 0, nil
+		}
 		return nil, 0, fmt.Errorf("load rules dir %s: %w", dir, err)
 	}
 

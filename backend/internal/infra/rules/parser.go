@@ -1,6 +1,9 @@
 package rules
 
 import (
+	"fmt"
+	"strings"
+
 	"gopkg.in/yaml.v3"
 
 	"github.com/drupaldoesnotexists/redpolitika/ce/internal/domain/detect"
@@ -58,6 +61,17 @@ type DetectNodeYAML struct {
 	Mode          string   `yaml:"mode,omitempty"`
 	From          int      `yaml:"from,omitempty"`
 	To            int      `yaml:"to,omitempty"`
+	Type          string   `yaml:"type,omitempty"`
+	Count         int      `yaml:"count,omitempty"`
+	Per           string   `yaml:"per,omitempty"`
+	Window        int      `yaml:"window,omitempty"`
+	WindowStr     string   `yaml:"-"` // "sentence" or empty; set by UnmarshalYAML
+
+	// Nested detection tree children — populated by UnmarshalYAML
+	PatternNode *DetectNodeYAML
+	NearNode    *DetectNodeYAML // second pattern for near
+	ChildNode   *DetectNodeYAML
+	IfNode      *DetectNodeYAML
 }
 
 // FixNodeYAML is a node in the fix method tree.
@@ -73,6 +87,10 @@ type FixNodeYAML struct {
 	Suffix      string  `yaml:"suffix,omitempty"`
 	Suggestion  string  `yaml:"suggestion,omitempty"`
 	Autofix     *string `yaml:"autofix,omitempty"`
+
+	// When-method sub-nodes (cross-domain: detect condition + then fix)
+	WhenDetect *DetectNodeYAML
+	ThenFix    *FixNodeYAML
 }
 
 // RulesFile wraps the top-level "rules" key in a YAML file.
@@ -122,6 +140,20 @@ func (n *DetectNodeYAML) buildArgs() map[string]interface{} {
 	if n.To > 0 {
 		args["to"] = n.To
 	}
+	if n.Type != "" {
+		args["type"] = n.Type
+	}
+	if n.Count > 0 {
+		args["count"] = n.Count
+	}
+	if n.Per != "" {
+		args["per"] = n.Per
+	}
+	if n.WindowStr != "" {
+		args["window"] = n.WindowStr
+	} else if n.Window > 0 {
+		args["window"] = n.Window
+	}
 	return args
 }
 
@@ -143,6 +175,331 @@ func (n *FixNodeYAML) buildArgs() map[string]interface{} {
 		args["suffix"] = n.Suffix
 	}
 	return args
+}
+
+// detectNodeArgFields is the set of YAML keys that are detect node arguments
+// (not method names or child nodes). Used by UnmarshalYAML to distinguish
+// inline args from child detection nodes in the key-as-method format.
+var detectNodeArgFields = map[string]bool{
+	"pattern": true, "words": true, "list": true, "value": true,
+	"case_sensitive": true, "left": true, "right": true,
+	"min": true, "max": true, "max_chars": true, "mode": true,
+	"from": true, "to": true, "type": true,
+	"child": true, "if": true, "suggestion": true,
+	"count": true, "per": true, "window": true,
+}
+
+// knownDetectMethods is the set of all detect method names the parser knows.
+// Used to distinguish method-as-key from unknown args in key-as-method format.
+var knownDetectMethods = map[string]bool{
+	"regex": true, "wordlist": true, "contains": true, "eq": true,
+	"prefix": true, "suffix": true,
+	"sentence_start": true, "sentence_end": true,
+	"paragraph_start": true, "paragraph_end": true,
+	"word_boundary": true,
+	"before": true, "after": true, "surrounded_by": true,
+	"length": true, "case": true, "position": true,
+	"and": true, "or": true, "not": true,
+	"threshold": true, "near": true, "exclude": true,
+	"llm": true, "plugin": true, "ner": true, "pos": true, "function": true, "expr": true,
+}
+
+// flatDetectNode is a shadow type without UnmarshalYAML to avoid infinite recursion.
+type flatDetectNode DetectNodeYAML
+
+// UnmarshalYAML handles three YAML formats for detection nodes:
+//
+//  1. Scalar → regex shorthand: `regex: "pattern"` or standalone `"pattern"`
+//  2. Sequence → method children: `and: [child1, child2]`
+//  3. Mapping → flat format (`method: ..., pattern: ...`) OR
+//     key-as-method (`before: { pattern: ..., child: ... }`)
+func (n *DetectNodeYAML) UnmarshalYAML(value *yaml.Node) error {
+	switch value.Kind {
+	case yaml.ScalarNode:
+		var s string
+		if err := value.Decode(&s); err != nil {
+			return err
+		}
+		n.Method = "regex"
+		n.Pattern = s
+		return nil
+
+	case yaml.SequenceNode:
+		return value.Decode(&n.Args)
+
+	case yaml.MappingNode:
+		// Check for explicit "method" key → flat format
+		for i := 0; i < len(value.Content); i += 2 {
+			if value.Content[i].Value == "method" {
+				return value.Decode((*flatDetectNode)(n))
+			}
+		}
+
+		// Key-as-method format: first key is method name
+		if len(value.Content) < 2 {
+			return nil
+		}
+		n.Method = value.Content[0].Value
+		valNode := value.Content[1]
+
+		switch valNode.Kind {
+		case yaml.ScalarNode:
+			var s string
+			if err := valNode.Decode(&s); err != nil {
+				return err
+			}
+			// Store in appropriate field based on method
+			n.Pattern = s
+
+		case yaml.SequenceNode:
+			return valNode.Decode(&n.Args)
+
+		case yaml.MappingNode:
+			for j := 0; j+1 < len(valNode.Content); j += 2 {
+				key := valNode.Content[j].Value
+				subVal := valNode.Content[j+1]
+
+				switch {
+				case key == "pattern":
+					if subVal.Kind == yaml.MappingNode || subVal.Kind == yaml.SequenceNode {
+						n.PatternNode = &DetectNodeYAML{}
+						if err := subVal.Decode(n.PatternNode); err != nil {
+							return err
+						}
+					} else {
+						if err := subVal.Decode(&n.Pattern); err != nil {
+							return err
+						}
+					}
+				case key == "child":
+					n.ChildNode = &DetectNodeYAML{}
+					if err := subVal.Decode(n.ChildNode); err != nil {
+						return err
+					}
+				case key == "if":
+					n.IfNode = &DetectNodeYAML{}
+					if err := subVal.Decode(n.IfNode); err != nil {
+						return err
+					}
+				case key == "list":
+					if err := subVal.Decode(&n.List); err != nil {
+						return err
+					}
+				case key == "words":
+					if err := subVal.Decode(&n.Words); err != nil {
+						return err
+					}
+				case key == "value":
+					if err := subVal.Decode(&n.Value); err != nil {
+						return err
+					}
+				case key == "case_sensitive":
+					if err := subVal.Decode(&n.CaseSensitive); err != nil {
+						return err
+					}
+				case key == "left":
+					if err := subVal.Decode(&n.Left); err != nil {
+						return err
+					}
+				case key == "right":
+					if err := subVal.Decode(&n.Right); err != nil {
+						return err
+					}
+				case key == "min":
+					if err := subVal.Decode(&n.Min); err != nil {
+						return err
+					}
+				case key == "max" || key == "max_chars":
+					if err := subVal.Decode(&n.Max); err != nil {
+						return err
+					}
+				case key == "mode":
+					if err := subVal.Decode(&n.Mode); err != nil {
+						return err
+					}
+				case key == "from":
+					if err := subVal.Decode(&n.From); err != nil {
+						return err
+					}
+				case key == "to":
+					if err := subVal.Decode(&n.To); err != nil {
+						return err
+					}
+				case key == "type":
+					if err := subVal.Decode(&n.Type); err != nil {
+						return err
+					}
+				case key == "count":
+					if err := subVal.Decode(&n.Count); err != nil {
+						return err
+					}
+				case key == "per":
+					if err := subVal.Decode(&n.Per); err != nil {
+						return err
+					}
+				case key == "window":
+					var asInt int
+					if err := subVal.Decode(&asInt); err == nil {
+						n.Window = asInt
+						break
+					}
+					var asStr string
+					if err := subVal.Decode(&asStr); err != nil {
+						return err
+					}
+					switch {
+					case asStr == "sentence":
+						n.WindowStr = "sentence"
+					case strings.HasPrefix(asStr, "chars:"):
+						var chars int
+						if _, err := fmt.Sscanf(asStr, "chars:%d", &chars); err == nil {
+							n.Window = chars
+						} else {
+							n.WindowStr = asStr
+						}
+					default:
+						var chars int
+						if _, err := fmt.Sscanf(asStr, "%d", &chars); err == nil {
+							n.Window = chars
+						} else {
+							n.WindowStr = asStr
+						}
+					}
+				case key == "near":
+					n.NearNode = &DetectNodeYAML{}
+					if err := subVal.Decode(n.NearNode); err != nil {
+						return err
+					}
+				default:
+					// Unknown key: could be a child method node
+					if knownDetectMethods[key] {
+						child := &DetectNodeYAML{Method: key}
+						if err := decodeChildValue(child, subVal); err != nil {
+							return err
+						}
+						if n.PatternNode == nil {
+							n.PatternNode = child
+						} else if n.ChildNode == nil {
+							n.ChildNode = child
+						}
+					}
+					// else: unknown non-method key → silently skip
+				}
+			}
+		}
+		return nil
+	}
+	return nil
+}
+
+// decodeChildValue populates a DetectNodeYAML from a sub-value node
+// (the value side of a method-as-key in key-as-method format).
+// Handles scalar (regex shorthand), sequence (and/or children), and
+// mapping (flat args) formats.
+func decodeChildValue(child *DetectNodeYAML, valNode *yaml.Node) error {
+	switch valNode.Kind {
+	case yaml.ScalarNode:
+		var s string
+		if err := valNode.Decode(&s); err != nil {
+			return err
+		}
+		if child.Method == "regex" {
+			child.Pattern = s
+		} else {
+			child.Value = s
+		}
+		return nil
+
+	case yaml.SequenceNode:
+		return valNode.Decode(&child.Args)
+
+	case yaml.MappingNode:
+		return valNode.Decode((*flatDetectNode)(child))
+	}
+	return nil
+}
+
+// ---------------------------------------------------------------------------
+//  FixNodeYAML — custom UnmarshalYAML for key-as-method format
+// ---------------------------------------------------------------------------
+
+// flatFixNode is a shadow type without UnmarshalYAML to avoid infinite recursion.
+type flatFixNode FixNodeYAML
+
+// UnmarshalYAML handles key-as-method format for fix nodes:
+//
+//	replace: { with: "..." }    → method=replace, With="..."
+//	remove: {}                  → method=remove
+//	regex_replace: { ... }      → method=regex_replace
+func (n *FixNodeYAML) UnmarshalYAML(value *yaml.Node) error {
+	switch value.Kind {
+	case yaml.SequenceNode:
+		return value.Decode(&n.Args)
+	case yaml.MappingNode:
+		// Check for explicit "method" key → flat format
+		for i := 0; i < len(value.Content); i += 2 {
+			if value.Content[i].Value == "method" {
+				return value.Decode((*flatFixNode)(n))
+			}
+		}
+		// Key-as-method format
+		if len(value.Content) < 2 {
+			return nil
+		}
+		n.Method = value.Content[0].Value
+		valNode := value.Content[1]
+		switch valNode.Kind {
+		case yaml.SequenceNode:
+			return valNode.Decode(&n.Args)
+		case yaml.MappingNode:
+			for j := 0; j+1 < len(valNode.Content); j += 2 {
+				key := valNode.Content[j].Value
+				subVal := valNode.Content[j+1]
+				switch key {
+				case "with":
+					if err := subVal.Decode(&n.With); err != nil {
+						return err
+					}
+				case "pattern":
+					if err := subVal.Decode(&n.Pattern); err != nil {
+						return err
+					}
+				case "replacement":
+					if err := subVal.Decode(&n.Replacement); err != nil {
+						return err
+					}
+				case "prefix":
+					if err := subVal.Decode(&n.Prefix); err != nil {
+						return err
+					}
+				case "suffix":
+					if err := subVal.Decode(&n.Suffix); err != nil {
+						return err
+					}
+				case "suggestion":
+					if err := subVal.Decode(&n.Suggestion); err != nil {
+						return err
+					}
+				case "autofix":
+					if err := subVal.Decode(&n.Autofix); err != nil {
+						return err
+					}
+				case "detect":
+					n.WhenDetect = &DetectNodeYAML{}
+					if err := subVal.Decode(n.WhenDetect); err != nil {
+						return err
+					}
+				case "then":
+					n.ThenFix = &FixNodeYAML{}
+					if err := subVal.Decode(n.ThenFix); err != nil {
+						return err
+					}
+				}
+			}
+		}
+		return nil
+	}
+	return nil
 }
 
 // ---------------------------------------------------------------------------
@@ -177,12 +534,58 @@ func buildDetectNode(ny *DetectNodeYAML) (detect.Node, string, error) {
 		return nil, "", nil
 	}
 
-	// Build child nodes
-	children := make([]detect.Node, 0, len(ny.Args))
+	// Build child nodes from all sub-node fields
+	var children []detect.Node
+
+	// 1. Args array (and/or logical operators)
 	for i := range ny.Args {
 		child, _, err := buildDetectNode(&ny.Args[i])
 		if err != nil {
 			return nil, "", &Error{Op: "buildDetectNode", Message: "build child " + ny.Args[i].Method, Err: err}
+		}
+		if child != nil {
+			children = append(children, child)
+		}
+	}
+
+	// 2. ChildNode (inner filter for length/case/position/contextual)
+	if ny.ChildNode != nil {
+		child, _, err := buildDetectNode(ny.ChildNode)
+		if err != nil {
+			return nil, "", &Error{Op: "buildDetectNode", Message: "build child " + ny.ChildNode.Method, Err: err}
+		}
+		if child != nil {
+			children = append(children, child)
+		}
+	}
+
+	// 3. PatternNode (anchor pattern for before/after/near)
+	if ny.PatternNode != nil {
+		child, _, err := buildDetectNode(ny.PatternNode)
+		if err != nil {
+			return nil, "", &Error{Op: "buildDetectNode", Message: "build child " + ny.PatternNode.Method, Err: err}
+		}
+		if child != nil {
+			children = append(children, child)
+		}
+	}
+
+	// 4. NearNode (second pattern for near)
+	if ny.NearNode != nil {
+		child, _, err := buildDetectNode(ny.NearNode)
+		if err != nil {
+			return nil, "", &Error{Op: "buildDetectNode", Message: "build near " + ny.NearNode.Method, Err: err}
+		}
+		if child != nil {
+			children = append(children, child)
+		}
+	}
+
+	// 5. IfNode (conditional detection)
+	if ny.IfNode != nil {
+		child, _, err := buildDetectNode(ny.IfNode)
+		if err != nil {
+			return nil, "", &Error{Op: "buildDetectNode", Message: "build child " + ny.IfNode.Method, Err: err}
 		}
 		if child != nil {
 			children = append(children, child)
@@ -233,6 +636,29 @@ func buildFixNode(ny *FixNodeYAML) (fix.Node, error) {
 		if child != nil {
 			children = append(children, child)
 		}
+	}
+
+	// Handle "when" method (cross-domain: detect condition + fix)
+	if method == "when" {
+		var condition detect.Node
+		if ny.WhenDetect != nil {
+			var detectMethod string // not used
+			var err error
+			condition, detectMethod, err = buildDetectNode(ny.WhenDetect)
+			if err != nil {
+				return nil, &Error{Op: "buildFixNode", Message: "build when condition", Err: err}
+			}
+			_ = detectMethod
+		}
+		var thenNode fix.Node
+		if ny.ThenFix != nil {
+			var err error
+			thenNode, err = buildFixNode(ny.ThenFix)
+			if err != nil {
+				return nil, &Error{Op: "buildFixNode", Message: "build when then", Err: err}
+			}
+		}
+		return &fix.WhenNode{Condition: condition, Then: thenNode}, nil
 	}
 
 	args := ny.buildArgs()
