@@ -164,3 +164,93 @@ func TestRegexCaptureGroups(t *testing.T) {
 		t.Fatalf("unexpected groups: %+v", got[0].Groups)
 	}
 }
+
+func TestSentenceStartWithChild(t *testing.T) {
+	inner := mustBuild(t, "regex", map[string]interface{}{
+		"pattern": `^[а-я]`, "case_sensitive": true,
+	}, nil)
+	node := mustBuild(t, "sentence_start", nil, []detect.Node{inner})
+
+	text := "Нормально. плохое начало. И снова нормально."
+	got := node.Detect(text)
+	if len(got) != 1 {
+		t.Fatalf("expected 1 lowercase sentence start, got %+v", got)
+	}
+	if textSlice(text, got[0]) != "п" {
+		t.Fatalf("unexpected match %q", textSlice(text, got[0]))
+	}
+
+	// Without child — zero-length positions at each sentence start
+	bare := mustBuild(t, "sentence_start", nil, nil)
+	bareGot := bare.Detect(text)
+	if len(bareGot) != 3 {
+		t.Fatalf("expected 3 sentence starts, got %+v", bareGot)
+	}
+}
+
+func TestSentenceEndWithChild(t *testing.T) {
+	inner := mustBuild(t, "regex", map[string]interface{}{
+		"pattern": `же$`, "case_sensitive": true,
+	}, nil)
+	node := mustBuild(t, "sentence_end", nil, []detect.Node{inner})
+
+	text := "Сделай же. Не надо же. Хватит."
+	got := node.Detect(text)
+	if len(got) != 2 {
+		t.Fatalf("expected 2 sentence-final 'же', got %+v", got)
+	}
+	for _, m := range got {
+		if textSlice(text, m) != "же" {
+			t.Fatalf("unexpected match %q", textSlice(text, m))
+		}
+	}
+}
+
+func TestParagraphStartWithChild(t *testing.T) {
+	inner := mustBuild(t, "wordlist", map[string]interface{}{
+		"list": []string{"Во-первых"}, "case_sensitive": true,
+	}, nil)
+	node := mustBuild(t, "paragraph_start", nil, []detect.Node{inner})
+
+	text := "Во-первых, важно.\n\nА здесь Во-первых не в начале.\n\nВо-первых снова."
+	got := node.Detect(text)
+	if len(got) != 2 {
+		t.Fatalf("expected 2 paragraph-initial matches, got %+v", got)
+	}
+	for _, m := range got {
+		if textSlice(text, m) != "Во-первых" {
+			t.Fatalf("unexpected match %q", textSlice(text, m))
+		}
+	}
+}
+
+func TestParagraphEndWithChild(t *testing.T) {
+	inner := mustBuild(t, "regex", map[string]interface{}{
+		"pattern": `конец$`, "case_sensitive": true,
+	}, nil)
+	node := mustBuild(t, "paragraph_end", nil, []detect.Node{inner})
+
+	text := "Первый абзац конец\n\nСередина без\n\nТретий тоже конец"
+	got := node.Detect(text)
+	if len(got) != 2 {
+		t.Fatalf("expected 2 paragraph-final 'конец', got %+v", got)
+	}
+}
+
+func TestWordBoundaryWithChild(t *testing.T) {
+	inner := mustBuild(t, "contains", map[string]interface{}{
+		"value": "word", "case_sensitive": true,
+	}, nil)
+	node := mustBuild(t, "word_boundary", nil, []detect.Node{inner})
+
+	text := "a word and sword and word."
+	got := node.Detect(text)
+	if len(got) != 2 {
+		t.Fatalf("expected 2 whole-word matches, got %+v", got)
+	}
+	for _, m := range got {
+		if textSlice(text, m) != "word" {
+			t.Fatalf("unexpected match %q", textSlice(text, m))
+		}
+	}
+}

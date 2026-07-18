@@ -6,6 +6,44 @@ import (
 	"github.com/drupaldoesnotexists/redpolitika/ce/internal/domain/detect"
 )
 
+func TestParseSentenceStartWithChild(t *testing.T) {
+	data := []byte(`
+rules:
+  - id: "capitalization/sentence-start-lower"
+    severity: 4
+    category: "readability"
+    name: "Строчная в начале предложения"
+    detect:
+      sentence_start:
+        regex:
+          pattern: "^[а-яё]"
+          case_sensitive: true
+`)
+	parsed, err := ParseYAML(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(parsed) != 1 {
+		t.Fatalf("expected 1 rule, got %d", len(parsed))
+	}
+	dn := parsed[0].DetectNode()
+	if dn == nil {
+		t.Fatal("detectNode is nil — child was dropped")
+	}
+	// Type assert to ensure Inner is wired
+	if _, ok := dn.(*detect.SentenceStartNode); !ok {
+		t.Fatalf("expected *SentenceStartNode, got %T", dn)
+	}
+	text := "Хорошо. плохо. Ок."
+	got := dn.Detect(text)
+	if len(got) != 1 {
+		t.Fatalf("expected 1 match, got %+v", got)
+	}
+	if text[got[0].Start:got[0].End] != "п" {
+		t.Fatalf("unexpected match %q", text[got[0].Start:got[0].End])
+	}
+}
+
 func TestParseInlineYAML(t *testing.T) {
 	data := []byte(`
 rules:

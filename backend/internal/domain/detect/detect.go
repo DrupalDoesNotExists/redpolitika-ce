@@ -454,102 +454,247 @@ func (n *SuffixNode) Detect(text string) []MatchRange {
 }
 
 // SentenceStartNode matches beginning of each sentence.
-type SentenceStartNode struct{}
+// If Inner is set, runs it per sentence and keeps matches that start at
+// the sentence start (so ^ in a child regex anchors to that sentence).
+type SentenceStartNode struct {
+	Inner Node
+}
 
 func (n *SentenceStartNode) Detect(text string) []MatchRange {
 	if text == "" {
 		return nil
 	}
-	// First sentence always starts at 0
-	out := []MatchRange{{Start: 0, End: 0}}
-
-	bounds := sentenceBoundaries(text)
-	for _, pos := range bounds {
-		// Skip trailing whitespace after punctuation
-		skip := pos
-		for skip < len(text) && (text[skip] == ' ' || text[skip] == '\t' || text[skip] == '\n' || text[skip] == '\r') {
-			skip++
+	spans := sentenceSpans(text)
+	if n.Inner == nil {
+		out := make([]MatchRange, 0, len(spans))
+		for _, s := range spans {
+			out = append(out, MatchRange{Start: s[0], End: s[0]})
 		}
-		if skip < len(text) {
-			out = append(out, MatchRange{Start: skip, End: skip})
+		return out
+	}
+	var out []MatchRange
+	for _, s := range spans {
+		lo, hi := s[0], s[1]
+		for _, m := range n.Inner.Detect(text[lo:hi]) {
+			if m.Start != 0 {
+				continue
+			}
+			out = append(out, MatchRange{Start: lo + m.Start, End: lo + m.End, Groups: m.Groups})
 		}
 	}
 	return out
 }
 
 // SentenceEndNode matches end of each sentence.
-type SentenceEndNode struct{}
+// If Inner is set, runs it per sentence (excluding trailing .!?) and keeps
+// matches that end at the sentence end (so $ anchors before punctuation).
+type SentenceEndNode struct {
+	Inner Node
+}
 
 func (n *SentenceEndNode) Detect(text string) []MatchRange {
 	if text == "" {
 		return nil
 	}
-	re := regexp.MustCompile(`[.!?]`)
-	matches := re.FindAllStringIndex(text, -1)
-	out := make([]MatchRange, 0, len(matches))
-	for _, m := range matches {
-		// End at the punctuation character
-		out = append(out, MatchRange{Start: m[0], End: m[1]})
+	if n.Inner == nil {
+		re := regexp.MustCompile(`[.!?]`)
+		matches := re.FindAllStringIndex(text, -1)
+		out := make([]MatchRange, 0, len(matches))
+		for _, m := range matches {
+			out = append(out, MatchRange{Start: m[0], End: m[1]})
+		}
+		return out
+	}
+	var out []MatchRange
+	for _, s := range sentenceSpans(text) {
+		lo, hi := s[0], s[1]
+		contentEnd := hi
+		if contentEnd > lo {
+			switch text[contentEnd-1] {
+			case '.', '!', '?':
+				contentEnd--
+			}
+		}
+		subLen := contentEnd - lo
+		for _, m := range n.Inner.Detect(text[lo:contentEnd]) {
+			if m.End != subLen {
+				continue
+			}
+			out = append(out, MatchRange{Start: lo + m.Start, End: lo + m.End, Groups: m.Groups})
+		}
 	}
 	return out
 }
 
+// sentenceSpans returns [start, end) byte ranges for each sentence.
+// End is right after sentence-ending punctuation (.!?), or EOF for the last span.
+func sentenceSpans(text string) [][2]int {
+	bounds := sentenceBoundaries(text)
+	if len(bounds) == 0 {
+		return [][2]int{{0, len(text)}}
+	}
+	spans := make([][2]int, 0, len(bounds)+1)
+	lo := 0
+	for _, afterPunct := range bounds {
+		if afterPunct > lo {
+			spans = append(spans, [2]int{lo, afterPunct})
+		}
+		skip := afterPunct
+		for skip < len(text) && (text[skip] == ' ' || text[skip] == '\t' || text[skip] == '\n' || text[skip] == '\r') {
+			skip++
+		}
+		lo = skip
+	}
+	if lo < len(text) {
+		spans = append(spans, [2]int{lo, len(text)})
+	}
+	return spans
+}
+
 // ParagraphStartNode matches beginning of each paragraph (after \n\n).
-type ParagraphStartNode struct{}
+// If Inner is set, runs it per paragraph and keeps matches at paragraph start.
+type ParagraphStartNode struct {
+	Inner Node
+}
 
 func (n *ParagraphStartNode) Detect(text string) []MatchRange {
 	if text == "" {
 		return nil
 	}
-	out := []MatchRange{{Start: 0, End: 0}}
-	re := regexp.MustCompile(`\n\n+`)
-	matches := re.FindAllStringIndex(text, -1)
-	for _, m := range matches {
-		pos := m[1] // after the newlines
-		if pos < len(text) {
-			out = append(out, MatchRange{Start: pos, End: pos})
+	spans := paragraphSpans(text)
+	if n.Inner == nil {
+		out := make([]MatchRange, 0, len(spans))
+		for _, s := range spans {
+			out = append(out, MatchRange{Start: s[0], End: s[0]})
+		}
+		return out
+	}
+	var out []MatchRange
+	for _, s := range spans {
+		lo, hi := s[0], s[1]
+		for _, m := range n.Inner.Detect(text[lo:hi]) {
+			if m.Start != 0 {
+				continue
+			}
+			out = append(out, MatchRange{Start: lo + m.Start, End: lo + m.End, Groups: m.Groups})
 		}
 	}
 	return out
 }
 
 // ParagraphEndNode matches end of each paragraph (before \n\n).
-type ParagraphEndNode struct{}
+// If Inner is set, runs it per paragraph and keeps matches at paragraph end.
+type ParagraphEndNode struct {
+	Inner Node
+}
 
 func (n *ParagraphEndNode) Detect(text string) []MatchRange {
 	if text == "" {
 		return nil
 	}
-	re := regexp.MustCompile(`\n\n+`)
-	matches := re.FindAllStringIndex(text, -1)
-	out := make([]MatchRange, 0, len(matches)+1)
-	for _, m := range matches {
-		// End before the newlines
-		out = append(out, MatchRange{Start: m[0], End: m[0]})
+	if n.Inner == nil {
+		re := regexp.MustCompile(`\n\n+`)
+		matches := re.FindAllStringIndex(text, -1)
+		out := make([]MatchRange, 0, len(matches))
+		for _, m := range matches {
+			out = append(out, MatchRange{Start: m[0], End: m[0]})
+		}
+		return out
+	}
+	var out []MatchRange
+	for _, s := range paragraphSpans(text) {
+		lo, hi := s[0], s[1]
+		subLen := hi - lo
+		for _, m := range n.Inner.Detect(text[lo:hi]) {
+			if m.End != subLen {
+				continue
+			}
+			out = append(out, MatchRange{Start: lo + m.Start, End: lo + m.End, Groups: m.Groups})
+		}
 	}
 	return out
 }
 
+// paragraphSpans returns [start, end) for each paragraph split on \n\n+.
+// End is the start of the separating newlines (content only), or EOF.
+func paragraphSpans(text string) [][2]int {
+	re := regexp.MustCompile(`\n\n+`)
+	matches := re.FindAllStringIndex(text, -1)
+	if len(matches) == 0 {
+		return [][2]int{{0, len(text)}}
+	}
+	spans := make([][2]int, 0, len(matches)+1)
+	lo := 0
+	for _, m := range matches {
+		spans = append(spans, [2]int{lo, m[0]})
+		lo = m[1]
+	}
+	if lo <= len(text) {
+		spans = append(spans, [2]int{lo, len(text)})
+	}
+	return spans
+}
+
 // WordBoundaryNode matches word boundaries (zero-length positions between words).
-type WordBoundaryNode struct{}
+// If Inner is set, keeps Inner matches whose Start and End are both word boundaries.
+type WordBoundaryNode struct {
+	Inner Node
+}
 
 func (n *WordBoundaryNode) Detect(text string) []MatchRange {
 	if text == "" {
 		return nil
 	}
-	var out []MatchRange
-	// Start boundary of first word
-	if len(text) > 0 && unicode.IsLetter(rune(text[0])) {
-		out = append(out, MatchRange{Start: 0, End: 0})
-	}
-	inWord := unicode.IsLetter(rune(text[0]))
-	for i := 1; i < len(text); i++ {
-		r := rune(text[i])
-		isLetter := unicode.IsLetter(r)
-		if inWord != isLetter {
-			out = append(out, MatchRange{Start: i, End: i})
-			inWord = isLetter
+	bounds := wordBoundaryOffsets(text)
+	if n.Inner == nil {
+		out := make([]MatchRange, 0, len(bounds))
+		for _, pos := range bounds {
+			out = append(out, MatchRange{Start: pos, End: pos})
 		}
+		return out
+	}
+	set := make(map[int]struct{}, len(bounds))
+	for _, pos := range bounds {
+		set[pos] = struct{}{}
+	}
+	var out []MatchRange
+	for _, m := range n.Inner.Detect(text) {
+		if _, ok := set[m.Start]; !ok {
+			continue
+		}
+		if _, ok := set[m.End]; !ok {
+			continue
+		}
+		out = append(out, m)
+	}
+	return out
+}
+
+// wordBoundaryOffsets returns byte offsets at letter/non-letter transitions,
+// plus 0 and len(text) when they abut a letter run.
+func wordBoundaryOffsets(text string) []int {
+	if text == "" {
+		return nil
+	}
+	var out []int
+	prevLetter := false
+	atStart := true
+	for i := 0; i < len(text); {
+		r, size := utf8.DecodeRuneInString(text[i:])
+		isLetter := unicode.IsLetter(r)
+		if atStart {
+			if isLetter {
+				out = append(out, 0)
+			}
+			atStart = false
+		} else if prevLetter != isLetter {
+			out = append(out, i)
+		}
+		prevLetter = isLetter
+		i += size
+	}
+	if prevLetter {
+		out = append(out, len(text))
 	}
 	return out
 }
@@ -1229,23 +1374,43 @@ func init() {
 	})
 
 	Register("sentence_start", func(args map[string]interface{}, children []Node) (Node, error) {
-		return &SentenceStartNode{}, nil
+		n := &SentenceStartNode{}
+		if len(children) > 0 {
+			n.Inner = children[0]
+		}
+		return n, nil
 	})
 
 	Register("sentence_end", func(args map[string]interface{}, children []Node) (Node, error) {
-		return &SentenceEndNode{}, nil
+		n := &SentenceEndNode{}
+		if len(children) > 0 {
+			n.Inner = children[0]
+		}
+		return n, nil
 	})
 
 	Register("paragraph_start", func(args map[string]interface{}, children []Node) (Node, error) {
-		return &ParagraphStartNode{}, nil
+		n := &ParagraphStartNode{}
+		if len(children) > 0 {
+			n.Inner = children[0]
+		}
+		return n, nil
 	})
 
 	Register("paragraph_end", func(args map[string]interface{}, children []Node) (Node, error) {
-		return &ParagraphEndNode{}, nil
+		n := &ParagraphEndNode{}
+		if len(children) > 0 {
+			n.Inner = children[0]
+		}
+		return n, nil
 	})
 
 	Register("word_boundary", func(args map[string]interface{}, children []Node) (Node, error) {
-		return &WordBoundaryNode{}, nil
+		n := &WordBoundaryNode{}
+		if len(children) > 0 {
+			n.Inner = children[0]
+		}
+		return n, nil
 	})
 
 	Register("length", func(args map[string]interface{}, children []Node) (Node, error) {
