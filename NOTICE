@@ -1,0 +1,12 @@
+redpolitika CE
+Copyright (c) 2026 redpolitika authors
+
+This product includes software developed by:
+  - HashiCorp (go-plugin) -- MPL 2.0
+  - LabStack (Echo) -- MIT
+  - Uber (FX, zap) -- MIT
+  - Google (gRPC, protobuf) -- Apache 2.0
+  - Various open-source contributors
+
+For full license texts, see the licenses directory or individual package
+documentation in go.sum and vendor/.

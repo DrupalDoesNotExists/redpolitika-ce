@@ -1,0 +1,25 @@
+syntax = "proto3";
+package llm;
+option go_package = "github.com/drupaldoesnotexists/redpolitika/ce/proto/llm";
+
+service LLMService {
+    rpc Analyze(AnalyzeRequest) returns (AnalyzeResponse);
+}
+
+message AnalyzeRequest {
+    string text = 1;
+    string rule_id = 2;
+    string prompt = 3;
+}
+
+message AnalyzeMatch {
+    string match_text = 1;
+    uint32 start = 2;
+    uint32 end = 3;
+    string suggestion = 4;
+    string explanation = 5;
+}
+
+message AnalyzeResponse {
+    repeated AnalyzeMatch matches = 1;
+}

@@ -1,0 +1,28 @@
+node_modules/
+.next/
+out/
+*.db
+*.db-wal
+*.db-shm
+.env
+*.log
+.DS_Store
+dist/
+__pycache__/
+*.pyc
+.venv/
+
+# AI agent and internal dev docs
+AGENTS.md
+docs-ai/
+frontend/AGENTS.md
+frontend/CLAUDE.md
+
+# User-provided rules (default search path)
+backend/rules/
+
+# Obsolete test page
+backend/static/
+
+# Go vendor
+vendor/

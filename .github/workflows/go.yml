@@ -1,0 +1,42 @@
+name: Go
+
+on:
+  push:
+    branches: [main]
+    paths: ['backend/**', '.github/workflows/go.yml']
+  pull_request:
+    branches: [main]
+    paths: ['backend/**']
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache-dependency-path: backend/go.sum
+
+      - name: Build
+        run: go build ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Staticcheck
+        uses: dominikh/staticcheck-action@v1
+        with:
+          version: 'latest'
+          working-directory: backend
+
+      - name: Test
+        run: go test -count=1 -race ./...

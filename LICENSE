@@ -1,0 +1,96 @@
+Business Source License 1.1
+
+Licensor:             redpolitika authors
+Licensed Work:        redpolitika CE
+                      The Licensed Work is (c) 2026 redpolitika authors
+Additional Use Grant: You may use the Licensed Work in production if your
+                      annual gross revenue does not exceed (i) 15,000,000 RUB
+                      (or equivalent in local currency) for legal entities
+                      registered in the Russian Federation, or (ii) $400,000
+                      USD (or equivalent in local currency) for legal entities
+                      registered outside the Russian Federation.
+                      These are two independent fixed thresholds — only the
+                      applicable threshold must be met based on your entity's
+                      jurisdiction of registration.
+                      You may use the Licensed Work regardless of revenue if
+                      your use is non-production, evaluation, or personal.
+Change Date:          2030-07-18
+Change License:       Apache License, Version 2.0
+
+=============================================================================
+
+                          Business Source License 1.1
+
+                          Terms and Conditions
+
+=============================================================================
+
+1. License Grant. Licensor hereby grants to you a non-exclusive,
+non-transferable, non-sublicensable license to use, copy, modify, and
+distribute the Licensed Work, in source code or object code form, solely
+for lawful purposes and in accordance with the terms of this License.
+This license does not include any right to use the Licensed Work in a
+production environment unless you meet the Additional Use Grant.
+
+2. Restrictions. You may not use the Licensed Work in a production
+environment, other than as expressly permitted under the Additional Use
+Grant, unless and until the Change Date. For purposes of this License,
+"production environment" means any use of the Licensed Work that is
+not (a) for personal or evaluation purposes, (b) for internal
+non-production testing or development, or (c) for open source
+contributions.
+
+3. Change Date. On or after the Change Date, Licensor will make the
+Licensed Work available under the Change License. You may use the
+Licensed Work under the terms of the Change License after the Change
+Date, regardless of whether you have complied with the Additional Use
+Grant.
+
+4. Additional Use Grant. The Additional Use Grant set forth in the
+parameters above defines additional permitted uses of the Licensed Work.
+If no Additional Use Grant is specified, the terms of this License
+govern.
+
+5. Intellectual Property Rights. All rights, title, and interest in and
+to the Licensed Work, including all intellectual property rights
+therein, are and will remain the exclusive property of Licensor and its
+licensors. This License does not grant you any rights in Licensor's
+trademarks or branding except as necessary to comply with Section 7.
+
+6. Disclaimer of Warranty. THE LICENSED WORK IS PROVIDED "AS IS",
+WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
+LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL LICENSOR BE LIABLE FOR
+ANY CLAIM, DAMAGES, OR OTHER LIABILITY, ARISING FROM, OUT OF, OR IN
+CONNECTION WITH THE LICENSED WORK OR THIS LICENSE.
+
+7. Notice. You must retain all copyright, patent, trademark, and
+attribution notices contained in the Licensed Work. You may not remove
+or alter any such notices.
+
+8. Termination. This License terminates automatically if you fail to
+comply with any of its terms. Upon termination, you must cease all use
+of the Licensed Work and destroy all copies. Sections 2, 5, 6, 8, 9,
+and 10 survive termination.
+
+9. Governing Law. This License is governed by the laws of the jurisdiction
+specified by Licensor in the parameters, or if none, the laws of the
+United States and the State of California, without regard to conflict
+of law principles.
+
+10. Entire Agreement. This License constitutes the entire agreement
+between the parties with respect to the Licensed Work and supersedes
+all prior or contemporaneous communications. No amendment or
+modification of this License is binding unless in writing and signed
+by Licensor.
+
+-----------------------------------------------------------------------------
+
+Appendix A: Standard BSL 1.1 Text
+
+The Business Source License (this document, or the "License") is not an
+Open Source license. However, the Licensed Work will eventually be made
+available under an Open Source License, as stated in this License.
+
+For more information on the Business Source License, visit
+https://mariadb.com/bsl11/.

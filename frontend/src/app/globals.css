@@ -1,0 +1,346 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-primary: #b65a37;
+  --color-primary-50: #fdf2ef;
+  --color-primary-100: #f9ddd6;
+  --color-primary-200: #f3c0b0;
+  --color-primary-300: #eb9a82;
+  --color-primary-400: #e27a5b;
+  --color-primary-500: #b65a37;
+  --color-primary-600: #9a4a2d;
+  --color-primary-700: #7d3b23;
+  --color-primary-800: #632e1b;
+  --color-primary-900: #4d2314;
+
+  --color-terra: #b65a37;
+  --color-link-blue: #2b5a7c;
+
+  --color-surface: #f4f1ea;
+  --color-surface-container: #ffffff;
+  --color-surface-secondary: #f5f5f5;
+  --color-on-surface: #1a1a1a;
+  --color-on-surface-variant: #6b645a;
+  --color-outline: #d8d3c8;
+  --color-outline-variant: #f0f0f0;
+
+  /* Category colors — mockup palette */
+  --color-cleanliness: #b65a37;
+  --color-cleanliness-bg: rgba(255, 232, 154, 1);
+  --color-readability: #2b5a7c;
+  --color-readability-bg: rgba(214, 239, 255, 1);
+
+  /* Status colors */
+  --color-tentative: #a3a3a3;
+
+  --animate-fade-in: fade-in 0.25s ease-out both;
+  --animate-slide-up: slide-up 0.3s ease-out both;
+  --animate-slide-in-right: slide-in-right 0.3s ease-out both;
+  --animate-pulse-dot: pulse-dot 2s ease-in-out infinite;
+
+  --font-serif: "C059", "Helvetica Neue", "PT Serif", serif;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(100%); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+body {
+  font-family: "Helvetica Neue", -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Serif utility ── */
+
+.font-serif {
+  font-family: var(--font-serif);
+}
+
+/* ── Editor area (per mockup) ── */
+
+.editor-area {
+  padding-top: 56px;
+  padding-bottom: 40px;
+  position: relative;
+}
+
+/* ── CodeMirror overrides (mockup 1:1) ── */
+
+.cm-editor {
+  height: 400px;
+  font-size: 17px;
+  line-height: 30px;
+  outline: none !important;
+  border-radius: 4px;
+  padding: 4px 0;
+  color: var(--color-on-surface);
+}
+
+.cm-editor .cm-scroller {
+  font-family: "Helvetica Neue", -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+  overflow: auto;
+}
+
+.cm-editor.cm-focused {
+  outline: none !important;
+}
+
+.cm-editor .cm-gutters {
+  display: none; /* hide line numbers to match mockup */
+}
+
+.cm-editor .cm-content {
+  padding: 0;
+  caret-color: var(--color-on-surface);
+}
+
+.cm-editor .cm-line {
+  padding: 0;
+}
+
+.cm-editor .cm-activeLine {
+  background-color: transparent !important;
+}
+
+.cm-editor .cm-selectionBackground,
+.cm-editor.cm-focused .cm-selectionBackground {
+  background: rgba(182, 90, 55, 0.12) !important;
+}
+
+.cm-editor .cm-cursor {
+  border-left-color: var(--color-on-surface) !important;
+}
+
+/* ── Flag gutter marker ── */
+
+.cm-flag-gutter {
+  width: 6px;
+  min-width: 6px;
+}
+
+.cm-flag-gutter .cm-gutterElement {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cm-flag-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: var(--color-terra);
+}
+
+.cm-flag-dot.readability {
+  background-color: var(--color-link-blue);
+}
+
+/* ── Flag decoration categories ── */
+
+.cm-flag {
+  cursor: pointer;
+  padding: 1px 2px;
+  box-decoration-break: clone;
+  border-radius: 1px;
+  color: var(--color-on-surface);
+}
+
+/* Cleanliness category — yellow marker + terra underline */
+.cm-flag.category-cleanliness {
+  text-decoration: underline wavy var(--color-terra);
+  text-underline-offset: 2px;
+}
+
+.cm-flag.category-cleanliness.severity-high {
+  background: rgba(255, 232, 154, 1);
+}
+
+.cm-flag.category-cleanliness.severity-mid {
+  background: rgba(255, 232, 154, 0.72);
+}
+
+.cm-flag.category-cleanliness.severity-low {
+  background: rgba(255, 232, 154, 0.50);
+}
+
+/* Readability category — blue marker + blue underline */
+.cm-flag.category-readability {
+  text-decoration: underline wavy var(--color-link-blue);
+  text-underline-offset: 2px;
+}
+
+.cm-flag.category-readability.severity-high {
+  background: rgba(214, 239, 255, 1);
+}
+
+.cm-flag.category-readability.severity-mid {
+  background: rgba(214, 239, 255, 0.72);
+}
+
+.cm-flag.category-readability.severity-low {
+  background: rgba(214, 239, 255, 0.50);
+}
+
+/* Status variants */
+.cm-flag.status-tentative {
+  border-bottom-style: dashed;
+  opacity: 0.5;
+}
+
+.cm-flag.status-accepted {
+  opacity: 0.8;
+}
+
+.cm-flag.status-rejected {
+  background: rgba(0, 0, 0, 0.06) !important;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.cm-flag.status-applied {
+  display: none;
+}
+
+/* ── Floating FlagCard ── */
+
+.floating-card {
+  position: absolute;
+  width: 380px;
+  padding: 0;
+  background: var(--color-surface-container);
+  border: 1px solid var(--color-outline);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.10);
+  z-index: 50;
+}
+
+.floating-card::before {
+  content: "";
+  position: absolute;
+  left: -6px;
+  top: 22px;
+  width: 10px;
+  height: 10px;
+  background: var(--color-surface-container);
+  border-left: 1px solid var(--color-outline);
+  border-bottom: 1px solid var(--color-outline);
+  transform: rotate(45deg);
+}
+
+.floating-card .inner {
+  padding: 20px 24px 24px;
+}
+
+/* ── Codifier ── */
+
+.codifier {
+  margin-top: 36px;
+  padding: 16px 0;
+  border-top: 1px solid var(--color-outline);
+  border-bottom: 1px solid var(--color-outline);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.codifier .what {
+  font-weight: 700;
+  color: var(--color-on-surface);
+}
+
+.codifier .list {
+  color: var(--color-on-surface-variant);
+}
+
+.codifier .list a {
+  color: var(--color-link-blue);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ── Stats block (per mockup) ── */
+
+.stats-block {
+  margin-top: 32px;
+  display: flex;
+  align-items: flex-end;
+  gap: 40px;
+}
+
+/* ── Score Panel ── */
+
+.score-panel .score {
+  font-family: var(--font-serif);
+  font-size: 36px;
+  line-height: 36px;
+  letter-spacing: -0.02em;
+}
+
+.score-panel .score .max {
+  font-size: 18px;
+  color: var(--color-on-surface-variant);
+}
+
+.score-panel .score.good {
+  color: #4a7c59;
+}
+
+.score-panel .score.mid {
+  color: var(--color-terra);
+}
+
+.score-panel .score.bad {
+  color: var(--color-on-surface-variant);
+}
+
+.score-panel .label {
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--color-on-surface-variant);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ── Text Stats ── */
+
+.text-stats {
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--color-on-surface-variant);
+}
+
+.text-stats .violations {
+  display: block;
+  margin-top: 4px;
+  color: var(--color-on-surface);
+  font-weight: 500;
+}
+
+/* ── Footer ── */
+
+.footer-brand {
+  font-family: var(--font-serif);
+  color: var(--color-terra);
+}
+
+.footer-brand sup {
+  font-size: 0.6em;
+  color: var(--color-terra);
+  font-weight: 600;
+}

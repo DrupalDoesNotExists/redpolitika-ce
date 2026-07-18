@@ -1,0 +1,19 @@
+syntax = "proto3";
+package migrator;
+option go_package = "github.com/drupaldoesnotexists/redpolitika/ce/proto/migrator";
+
+service MigratorService {
+    rpc Migrate(MigrateRequest) returns (MigrateResponse);
+}
+
+message MigrateRequest {
+    string dialect = 1;
+    string dsn = 2;
+    int64 target_version = 3;
+    string direction = 4;
+}
+
+message MigrateResponse {
+    int64 current_version = 1;
+    string error = 2;
+}

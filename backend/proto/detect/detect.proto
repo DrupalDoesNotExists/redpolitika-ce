@@ -1,0 +1,24 @@
+syntax = "proto3";
+package detect;
+option go_package = "github.com/drupaldoesnotexists/redpolitika/ce/proto/detect";
+
+service DetectService {
+    rpc Detect(DetectRequest) returns (DetectResponse);
+}
+
+message DetectRequest {
+    string text = 1;
+    string rule_id = 2;
+    string config = 3;
+}
+
+message Match {
+    string match_text = 1;
+    uint32 start = 2;
+    uint32 end = 3;
+    string extra = 4;
+}
+
+message DetectResponse {
+    repeated Match matches = 1;
+}
