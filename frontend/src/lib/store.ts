@@ -154,14 +154,15 @@ export function getCategoryCounts(
 
 /* ── Helpers ── */
 
-/** Clean up whitespace/punctuation after text deletion (autofix=""). */
+/** Clean up whitespace after deletion (autofix=""). Does not strip
+ *  sentence-final punctuation — that would undo append fixes like ".". */
 function cleanDelete(text: string): string {
   return text
-    .replace(/  +/g, ' ')            // collapse multiple spaces
-    .replace(/ ([.,!?;:…])/g, '$1') // space before punctuation
-    .replace(/([.,!?;:…])\1+/g, '$1') // collapse doubled punctuation
-    .replace(/^[,.\s…]+/, '')        // trim leading punctuation/space/dots
-    .replace(/[,.\s…]+$/, '');       // trim trailing punctuation/space/dots
+    .replace(/  +/g, " ") // collapse multiple spaces
+    .replace(/ ([.,!?;:…])/g, "$1") // space before punctuation
+    .replace(/([.,!?;:…])\1+/g, "$1") // collapse doubled punctuation
+    .replace(/^\s+/, "")
+    .replace(/\s+$/, "");
 }
 
 /** Re-resolve spans from anchors after text mutation; drop unresolvable. */
@@ -349,19 +350,25 @@ export const useStore = create<StoreState>()((set, get) => ({
 
     let newText = state.text;
     const flags = { ...state.flags };
+    let hadDelete = false;
 
     for (const f of accepted) {
       const { from, to } = f.span;
       if (from < 0 || to > newText.length || from >= to) continue;
       if (f.autoFix === "") {
         newText = newText.slice(0, from) + newText.slice(to);
+        hadDelete = true;
       } else {
         newText = newText.slice(0, from) + f.autoFix + newText.slice(to);
       }
       delete flags[f.id];
     }
 
-    newText = cleanDelete(newText);
+    // Same as applyFlagFix: only tidy after deletions, never after append/replace
+    // (cleanDelete must not eat a just-added sentence-final period).
+    if (hadDelete) {
+      newText = cleanDelete(newText);
+    }
     set({
       text: newText,
       textHash: textHash(newText),
