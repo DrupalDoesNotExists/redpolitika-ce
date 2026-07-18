@@ -96,7 +96,8 @@ body {
 
 .cm-editor .cm-scroller {
   font-family: "Helvetica Neue", -apple-system, BlinkMacSystemFont, Arial, sans-serif;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .cm-editor.cm-focused {

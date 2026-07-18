@@ -212,6 +212,7 @@ export default function CodeMirrorEditor({
       doc: text,
       extensions: [
         basicSetup,
+        EditorView.lineWrapping,
         flagField,
         flagDataField,
         flagGutter(flagDataField),
