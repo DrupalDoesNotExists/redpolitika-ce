@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, PT_Serif } from "next/font/google";
+import AppShell from "@/components/AppShell";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -32,7 +33,7 @@ export default function RootLayout({
   return (
     <html lang="ru" className={`${geistSans.variable} ${geistMono.variable} ${ptSerif.variable}`}>
       <body className="min-h-screen bg-surface text-on-surface antialiased">
-        {children}
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

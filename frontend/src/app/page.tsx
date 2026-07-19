@@ -9,11 +9,9 @@ import { WSConnection, type ServerMessage } from "@/lib/api";
 import type { ClientRule } from "@/lib/client-engine";
 import type { FlagState } from "@/lib/store";
 import CodeMirrorEditor from "@/components/CodeMirrorEditor";
-import TopBar from "@/components/TopBar";
 import Codifier from "@/components/Codifier";
 import ScorePanel from "@/components/ScorePanel";
 import TextStats from "@/components/TextStats";
-import Footer from "@/components/Footer";
 import FlagCard from "@/components/FlagCard";
 
 /* ------------------------------------------------------------------ */
@@ -293,82 +291,74 @@ function HomeContent() {
 
   /* ---------- JSX ---------- */
   return (
-    <div className="min-h-screen flex flex-col bg-[#f4f1ea] text-[#1a1a1a]">
-      {/* Top bar */}
-      <TopBar />
+    <div className="mx-auto max-w-[980px] px-8 editor-area">
+      <h1 className="font-serif text-[28px] leading-[36px] mb-9 tracking-[-.01em]">
+        Проверка текста
+      </h1>
 
-      {/* Main content — flex-1 pushes footer down */}
-      <main className="flex-1">
-        <div className="mx-auto max-w-[980px] px-8 editor-area">
-          {/* Heading per mockup */}
-          <h1 className="font-serif text-[28px] leading-[36px] mb-9 tracking-[-.01em]">
-            Проверка текста
-          </h1>
-
-          {/* Editor — fixed height, scroll */}
-          <div className="relative">
-            <CodeMirrorEditor
-              text={text}
-              flags={activeFlags}
-              onChange={handleTextChange}
-              onFlagClick={handleFlagClick}
-            />
-            {/* Empty editor hint — like Главред */}
-            {!text && (
-              <div
-                className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-10"
-                style={{ top: '80px' }}
+      <div className="relative">
+        <CodeMirrorEditor
+          text={text}
+          flags={activeFlags}
+          onChange={handleTextChange}
+          onFlagClick={handleFlagClick}
+        />
+        {!text && (
+          <div
+            className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-10"
+            style={{ top: "80px" }}
+          >
+            <span className="text-[17px] text-[#c0b8a8] font-sans">
+              <svg
+                className="inline-block mr-2 mb-0.5"
+                width="20"
+                height="20"
+                viewBox="0 0 20 20"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
               >
-                <span className="text-[17px] text-[#c0b8a8] font-sans">
-                  <svg className="inline-block mr-2 mb-0.5" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                    <path d="M3 10h14M12 4l6 6-6 6"/>
-                  </svg>
-                  Писать сюда
-                </span>
-              </div>
-            )}
+                <path d="M3 10h14M12 4l6 6-6 6" />
+              </svg>
+              Писать сюда
+            </span>
           </div>
+        )}
+      </div>
 
-          {/* Floating FlagCard */}
-          {selectedFlag && (
-            <FlagCard
-              flag={selectedFlag}
-              text={text}
-              position={cardPosition}
-              onAccept={handleAccept}
-              onReject={handleReject}
-              onClose={handleCloseCard}
-            />
-          )}
+      {selectedFlag && (
+        <FlagCard
+          flag={selectedFlag}
+          text={text}
+          position={cardPosition}
+          onAccept={handleAccept}
+          onReject={handleReject}
+          onClose={handleCloseCard}
+        />
+      )}
 
-          {/* Codifier — under editor */}
-          <Codifier
+      <Codifier
+        flags={flags}
+        onApplyAll={acceptedCount > 0 ? handleApplyAll : undefined}
+        isApplyingAll={isApplyingAll}
+        acceptedCount={acceptedCount}
+      />
+
+      <div className="stats-block">
+        <ScorePanel
+          cleanliness={scores.cleanliness}
+          readability={scores.readability}
+        />
+        <div className="ml-auto">
+          <TextStats
+            wordCount={wordCount}
+            sentenceCount={sentenceCountStore}
+            charCount={charCountStore}
             flags={flags}
-            onApplyAll={acceptedCount > 0 ? handleApplyAll : undefined}
-            isApplyingAll={isApplyingAll}
-            acceptedCount={acceptedCount}
           />
-
-          {/* Score Panel + Text Stats */}
-          <div className="stats-block">
-            <ScorePanel
-              cleanliness={scores.cleanliness}
-              readability={scores.readability}
-            />
-            <div className="ml-auto">
-              <TextStats
-                wordCount={wordCount}
-                sentenceCount={sentenceCountStore}
-                charCount={charCountStore}
-                flags={flags}
-              />
-            </div>
-          </div>
         </div>
-      </main>
-
-      {/* Footer */}
-      <Footer />
+      </div>
     </div>
   );
 }

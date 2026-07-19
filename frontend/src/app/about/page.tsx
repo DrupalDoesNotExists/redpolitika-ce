@@ -2,142 +2,160 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import Link from "next/link";
+import { fetchVersion } from "@/lib/api";
 
 const queryClient = new QueryClient();
-
-interface VersionInfo {
-  version: string;
-  commit?: string;
-  build_time?: string;
-  license?: string;
-}
-
-async function fetchVersion(): Promise<VersionInfo> {
-  const res = await fetch("/api/version");
-  if (!res.ok) throw new Error(`Failed to fetch version: ${res.status}`);
-  return res.json();
-}
 
 function AboutContent() {
   const { data: version, isLoading, error } = useQuery({
     queryKey: ["version"],
     queryFn: fetchVersion,
-    staleTime: 60 * 60 * 1000, // 1 hour
+    staleTime: 60 * 60 * 1000,
   });
 
   return (
-    <div className="mx-auto max-w-[600px] px-4 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <Link
-          href="/"
-          className="mb-4 inline-flex items-center gap-1 text-xs text-on-surface-variant hover:text-on-surface"
-        >
-          <svg
-            className="h-3.5 w-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="m15 18-6-6 6-6" />
-          </svg>
-          Назад к редактору
-        </Link>
-        <h1 className="text-xl font-bold text-on-surface">О программе</h1>
-      </div>
+    <div className="mx-auto max-w-[980px] px-8 editor-area">
+      <h1 className="font-serif text-[28px] leading-[36px] mb-9 tracking-[-.01em]">
+        О программе
+      </h1>
 
-      {/* Brand */}
-      <div className="mb-8 flex items-center gap-4">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-base font-bold text-white">
-          R
-        </div>
-        <div>
-          <h2 className="text-lg font-semibold text-on-surface">
-            Redpolitika CE
+      <article className="max-w-[640px] space-y-8 text-[17px] leading-[30px] text-[#1a1a1a]">
+        <p>
+          <span className="font-serif text-[22px] leading-[30px] tracking-[-.01em]">
+            Редполитика
+            <sup className="text-terra text-[0.55em] font-semibold leading-none align-super ml-[1px]">
+              β
+            </sup>
+          </span>{" "}
+          — сервис проверки и правки текста по правилам редакционной политики.
+          Концептуально это «Главред, но для любой редполитики»: правила живут
+          в YAML на диске, а не зашиты в код продукта.
+        </p>
+
+        <section>
+          <h2 className="mb-3 font-serif text-[20px] leading-[28px] tracking-[-.01em]">
+            Как устроена проверка
           </h2>
-          <p className="text-sm text-on-surface-variant">
-            Проверка текста по правилам редполитики
+          <p className="mb-4 text-[#6b645a]">
+            Вы пишете текст в редакторе — движок подсвечивает нарушения и
+            предлагает правки. По ходу набора считаются два независимых балла
+            от 0 до 10:
           </p>
-        </div>
-      </div>
-
-      {/* Version */}
-      <div className="space-y-4 rounded-xl border border-outline bg-surface-container p-6">
-        <h3 className="text-sm font-semibold text-on-surface">
-          Информация о версии
-        </h3>
-
-        {isLoading && (
-          <p className="text-sm text-on-surface-variant/50">Загрузка…</p>
-        )}
-
-        {error && (
-          <p className="text-sm text-red-600 dark:text-red-400">
-            Не удалось загрузить информацию о версии
+          <ul className="list-disc space-y-2 pl-5 text-[#6b645a]">
+            <li>
+              <span className="text-[#1a1a1a]">чистота</span> — канцелярит,
+              слова-паразиты, грубая и лишняя лексика;
+            </li>
+            <li>
+              <span className="text-[#1a1a1a]">читаемость</span> — тяжёлые
+              конструкции, длина фраз, то, что мешает читать.
+            </li>
+          </ul>
+          <p className="mt-4 text-[#6b645a]">
+            Простые правила (regex, списки слов) выполняются прямо в браузере
+            и дают мгновенную подсветку. Сложные — с LLM, NER, POS или плагинами —
+            считает сервер; результат приходит по WebSocket.
           </p>
-        )}
+        </section>
 
-        {version && (
-          <dl className="space-y-3">
-            <div className="flex justify-between">
-              <dt className="text-sm text-on-surface-variant">Версия</dt>
-              <dd className="text-sm font-mono text-on-surface">
-                {version.version}
-              </dd>
-            </div>
-            {version.commit && (
-              <div className="flex justify-between">
-                <dt className="text-sm text-on-surface-variant">Commit</dt>
-                <dd className="text-sm font-mono text-on-surface">
-                  {version.commit.slice(0, 8)}
-                </dd>
-              </div>
-            )}
-            {version.build_time && (
-              <div className="flex justify-between">
-                <dt className="text-sm text-on-surface-variant">Сборка</dt>
-                <dd className="text-sm text-on-surface">
-                  {version.build_time}
-                </dd>
-              </div>
-            )}
-            {version.license && (
-              <div className="flex justify-between">
-                <dt className="text-sm text-on-surface-variant">Лицензия</dt>
-                <dd className="text-sm text-on-surface">{version.license}</dd>
-              </div>
-            )}
-          </dl>
-        )}
-      </div>
+        <section>
+          <h2 className="mb-3 font-serif text-[20px] leading-[28px] tracking-[-.01em]">
+            Правила и плагины
+          </h2>
+          <p className="text-[#6b645a]">
+            Редполитика собирается слоями: базовый набор, проектный и
+            переопределения. Файлы YAML мержатся по стабильному{" "}
+            <span className="font-mono text-[15px] text-[#1a1a1a]">id</span>{" "}
+            правила. Тяжёлые стадии и интеграции выносятся в плагины
+            (go-plugin / gRPC): ядро знает только точки расширения, а не
+            «классы» плагинов.
+          </p>
+        </section>
 
-      {/* License info */}
-      <div className="mt-6 rounded-xl border border-outline bg-surface-container p-6">
-        <h3 className="mb-2 text-sm font-semibold text-on-surface">
-          Лицензия
-        </h3>
-        <p className="text-xs leading-relaxed text-on-surface-variant">
-          Redpolitika CE распространяется по лицензии BSL (Business Source
-          License). Дополнительные условия использования — в файле LICENSE.
-        </p>
-        <p className="mt-3 text-xs leading-relaxed text-on-surface-variant">
-          Версии Enterprise Edition доступны по отдельной лицензии.
-        </p>
-      </div>
+        <section>
+          <h2 className="mb-3 font-serif text-[20px] leading-[28px] tracking-[-.01em]">
+            Community Edition
+          </h2>
+          <p className="text-[#6b645a]">
+            Эта сборка — open-core ядро для self-host: один проект, без
+            авторизации и мультитенантности. Enterprise Edition надстраивается
+            плагинами (SSO, RBAC, white-label, on-prem LLM и др.) без переписывания
+            ядра.
+          </p>
+        </section>
 
-      {/* Footer link */}
-      <div className="mt-8 text-center">
-        <Link
-          href="/"
-          className="text-xs text-on-surface-variant/50 hover:text-on-surface-variant"
-        >
-          &larr; Вернуться в редактор
-        </Link>
-      </div>
+        <section>
+          <h2 className="mb-3 font-serif text-[20px] leading-[28px] tracking-[-.01em]">
+            Версия
+          </h2>
+
+          {isLoading && (
+            <p className="text-[15px] leading-6 text-[#6b645a]">Загрузка…</p>
+          )}
+
+          {error && (
+            <p className="text-[15px] leading-6 text-[#6b645a]">
+              Не удалось загрузить информацию о версии. Убедитесь, что API
+              доступен (в dev — бэкенд на{" "}
+              <span className="font-mono text-[13px]">:8080</span>).
+            </p>
+          )}
+
+          {version && (
+            <dl className="flex flex-col gap-2 text-[15px] leading-6">
+              <div className="flex gap-6">
+                <dt className="w-32 shrink-0 text-[#6b645a]">Сборка</dt>
+                <dd className="font-mono text-[#1a1a1a]">{version.version}</dd>
+              </div>
+              {version.module && (
+                <div className="flex gap-6">
+                  <dt className="w-32 shrink-0 text-[#6b645a]">Модуль</dt>
+                  <dd className="font-mono text-[#1a1a1a]">{version.module}</dd>
+                </div>
+              )}
+              {version.component && (
+                <div className="flex gap-6">
+                  <dt className="w-32 shrink-0 text-[#6b645a]">Компонент</dt>
+                  <dd className="font-mono text-[#1a1a1a]">
+                    {version.component}
+                  </dd>
+                </div>
+              )}
+              {version.commit && (
+                <div className="flex gap-6">
+                  <dt className="w-32 shrink-0 text-[#6b645a]">Коммит</dt>
+                  <dd className="font-mono text-[#1a1a1a]">
+                    {version.commit.slice(0, 8)}
+                  </dd>
+                </div>
+              )}
+              {version.build_time && (
+                <div className="flex gap-6">
+                  <dt className="w-32 shrink-0 text-[#6b645a]">Время сборки</dt>
+                  <dd className="text-[#1a1a1a]">{version.build_time}</dd>
+                </div>
+              )}
+              {version.license && (
+                <div className="flex gap-6">
+                  <dt className="w-32 shrink-0 text-[#6b645a]">Лицензия</dt>
+                  <dd className="font-mono text-[#1a1a1a]">{version.license}</dd>
+                </div>
+              )}
+            </dl>
+          )}
+        </section>
+
+        <section>
+          <h2 className="mb-3 font-serif text-[20px] leading-[28px] tracking-[-.01em]">
+            Лицензия
+          </h2>
+          <p className="text-[15px] leading-6 text-[#6b645a]">
+            Redpolitika CE распространяется по Business Source License (BSL)
+            с Additional Use Grant. Условия и пороги — в файле LICENSE
+            репозитория. Enterprise Edition лицензируется отдельно.
+          </p>
+        </section>
+      </article>
     </div>
   );
 }

@@ -10,13 +10,13 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 
+	"github.com/drupaldoesnotexists/redpolitika/ce/internal/buildinfo"
 	"github.com/drupaldoesnotexists/redpolitika/ce/internal/infra/plugin"
 )
 
 // HealthHandler handles health, version, and metrics.
 type HealthHandler struct {
 	logger  *zap.Logger
-	version string
 	plugins *plugin.Manager
 
 	analyzeLatency prometheus.Histogram
@@ -28,7 +28,6 @@ type HealthHandler struct {
 func NewHealthHandler(logger *zap.Logger, plugins *plugin.Manager) *HealthHandler {
 	h := &HealthHandler{
 		logger:  logger,
-		version: "0.1.0-dev",
 		plugins: plugins,
 	}
 	h.analyzeLatency = promauto.NewHistogram(prometheus.HistogramOpts{
@@ -66,12 +65,15 @@ func (h *HealthHandler) Health(c echo.Context) error {
 	})
 }
 
-// Version responds with version information.
+// Version responds with build-time version information (ldflags / buildinfo).
 func (h *HealthHandler) Version(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{
-		"version":   h.version,
-		"module":    "ce",
-		"component": "redpolitika",
+		"version":    buildinfo.Version,
+		"commit":     buildinfo.Commit,
+		"build_time": buildinfo.BuildTime,
+		"license":    buildinfo.License,
+		"module":     buildinfo.Module,
+		"component":  buildinfo.Component,
 	})
 }
 

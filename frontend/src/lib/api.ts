@@ -137,3 +137,28 @@ export class WSConnection {
     this.reconnectTimer = setTimeout(() => this.doConnect(), delay);
   }
 }
+
+/* ------------------------------------------------------------------ */
+/*  REST helpers                                                       */
+/* ------------------------------------------------------------------ */
+
+export interface VersionInfo {
+  version: string;
+  module?: string;
+  component?: string;
+  commit?: string;
+  build_time?: string;
+  license?: string;
+}
+
+export async function fetchVersion(): Promise<VersionInfo> {
+  const res = await fetch("/api/version");
+  if (!res.ok) {
+    throw new Error(`Failed to fetch version: ${res.status}`);
+  }
+  const contentType = res.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) {
+    throw new Error("Version endpoint returned non-JSON response");
+  }
+  return res.json() as Promise<VersionInfo>;
+}

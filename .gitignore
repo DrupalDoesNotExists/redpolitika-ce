@@ -25,3 +25,6 @@ frontend/CLAUDE.md
 
 # Go vendor
 vendor/
+
+# Local build output
+/bin/

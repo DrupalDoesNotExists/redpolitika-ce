@@ -9,10 +9,20 @@ RUN npm run build
 # Go builder
 FROM golang:1.26-alpine AS builder
 WORKDIR /build
+ARG VERSION=dev
+ARG COMMIT=unknown
+ARG BUILD_TIME=unknown
+ARG LICENSE=BSL-1.1
+ENV VERSION=$VERSION COMMIT=$COMMIT BUILD_TIME=$BUILD_TIME LICENSE=$LICENSE
 COPY backend/go.mod backend/go.sum ./
 RUN go mod download
 COPY backend/ ./
-RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /redpolitika ./cmd/api
+RUN CGO_ENABLED=0 go build -ldflags="-s -w \
+	-X github.com/drupaldoesnotexists/redpolitika/ce/internal/buildinfo.Version=${VERSION} \
+	-X github.com/drupaldoesnotexists/redpolitika/ce/internal/buildinfo.Commit=${COMMIT} \
+	-X github.com/drupaldoesnotexists/redpolitika/ce/internal/buildinfo.BuildTime=${BUILD_TIME} \
+	-X github.com/drupaldoesnotexists/redpolitika/ce/internal/buildinfo.License=${LICENSE}" \
+	-o /redpolitika ./cmd/api
 
 # Runtime — CE image, no bundled rules
 FROM alpine:3.19

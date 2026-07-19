@@ -21,15 +21,23 @@ Base URL: `http://localhost:8080`
 
 Prometheus text exposition (`redpolitika_analyze_total`, `redpolitika_analyze_latency_seconds`, `redpolitika_flags_total`).
 
-### `GET /version`
+### `GET /version` / `GET /api/version`
+
+Build-time metadata (injected via `-ldflags` / Docker build-args; not hardcoded at runtime).
 
 ```json
 {
-  "version": "0.1.0-dev",
+  "version": "v0.1.0b",
+  "commit": "a43c3b4",
+  "build_time": "2026-07-19T10:40:00Z",
+  "license": "BSL-1.1",
   "module": "ce",
   "component": "redpolitika"
 }
 ```
+
+Both paths return the same payload (`/api/version` is the preferred URL for the frontend).
+Local `go build` without ldflags yields `version=dev`, `commit=unknown`, `build_time=unknown`.
 
 ### `GET /api/rules`
 
@@ -261,7 +269,16 @@ paths:
                 properties:
                   version:
                     type: string
-                    example: "0.1.0-dev"
+                    example: "v0.1.0b"
+                  commit:
+                    type: string
+                    example: "a43c3b4"
+                  build_time:
+                    type: string
+                    example: "2026-07-19T10:40:00Z"
+                  license:
+                    type: string
+                    example: "BSL-1.1"
                   module:
                     type: string
                     example: "ce"
