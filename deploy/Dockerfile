@@ -8,8 +8,8 @@ RUN npm run build
 
 # Go builder
 FROM golang:1.26-alpine AS builder
-RUN apk add --no-cache protoc && \
-	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest && \
+RUN apk add --no-cache protoc
+RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest && \
 	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 WORKDIR /build
 ARG VERSION=dev
@@ -21,9 +21,14 @@ COPY backend/go.mod backend/go.sum ./
 RUN go mod download
 COPY backend/ ./
 # Generate protobuf Go code from .proto files (A27 extension points)
-RUN for dir in proto/detect proto/fix proto/identity proto/llm proto/migrator proto/pages; do \
-		ls "$$dir"/*.proto >/dev/null 2>&1 && cd "$$dir" && protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative *.proto && cd /build || true; \
-	done
+RUN echo "Generating proto Go code..." && \
+    for dir in proto/detect proto/fix proto/identity proto/llm proto/migrator proto/pages; do \
+        if ls "$dir"/*.proto >/dev/null 2>&1; then \
+            echo "  proto: $dir" && \
+            (cd "$dir" && protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative *.proto); \
+        fi; \
+    done && \
+    echo "Proto generation complete"
 RUN CGO_ENABLED=0 go build -ldflags="-s -w \
 	-X github.com/drupaldoesnotexists/redpolitika/ce/internal/buildinfo.Version=${VERSION} \
 	-X github.com/drupaldoesnotexists/redpolitika/ce/internal/buildinfo.Commit=${COMMIT} \
@@ -33,8 +38,8 @@ RUN CGO_ENABLED=0 go build -ldflags="-s -w \
 
 # Plugin builder — standalone Go modules for CE plugins
 FROM golang:1.26-alpine AS plugin-builder
-RUN apk add --no-cache protoc && \
-	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest && \
+RUN apk add --no-cache protoc
+RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest && \
 	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 WORKDIR /build
 COPY ce-plugins/pages/go.mod ce-plugins/pages/go.sum ./
