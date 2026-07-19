@@ -75,6 +75,7 @@ var Module = fx.Module("transport",
 		NewClientRulesHandler,
 		NewAnalyzeHandler,
 		NewRulesHandler,
+		NewPagesHandler,
 	),
 	fx.Invoke(
 		RegisterRoutes,

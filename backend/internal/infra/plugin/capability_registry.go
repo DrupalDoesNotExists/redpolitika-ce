@@ -5,6 +5,7 @@ package plugin
 // Plugins declare which they implement via GetCapabilities; the core
 // uses this registry to construct typed gRPC clients.
 const (
+	CapPages          = "static.pages"    // pages.PagesService — Level 1 data EP (A27)
 	CapDetectProvider = "detect.provider" // detcet.DetectService
 	CapLLMProvider    = "llm.provider"    // llm.LLMService
 	CapFixProvider    = "fix.provider"    // fix.FixService
@@ -27,6 +28,7 @@ const (
 // KnownCapabilities maps capability IDs to their human-readable gRPC service names.
 // Used for introspection / error messages.
 var KnownCapabilities = map[string]string{
+	CapPages:          "PagesService",
 	CapDetectProvider: "DetectService",
 	CapLLMProvider:    "LLMService",
 	CapFixProvider:    "FixService",

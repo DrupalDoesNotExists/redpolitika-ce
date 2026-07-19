@@ -100,6 +100,12 @@ type WebhookProvider interface {
 	Deliver(ctx context.Context, event string, payload []byte) error
 }
 
+// StaticPagesProvider — static content pages from plugins (Level 1 data EP).
+type StaticPagesProvider interface {
+	ListPages(ctx context.Context) ([]model.Page, error)
+	GetPage(ctx context.Context, slug string) (*model.Page, error)
+}
+
 // RuleValidator — additional plugin validation on load (core RE2 stays in NewRule).
 type RuleValidator interface {
 	ValidateRule(ctx context.Context, rule *model.Rule) error

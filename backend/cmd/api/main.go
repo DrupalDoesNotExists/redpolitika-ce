@@ -79,6 +79,7 @@ func main() {
 			plugin.NewManager,
 			plugin.NewRegistry,
 			plugin.NewPluginRegistrar,
+			fx.Annotate(plugin.NewPagesAdapter, fx.As(new(ports.StaticPagesProvider))),
 		),
 		fx.Invoke(func(lc fx.Lifecycle, m *plugin.Manager, r *plugin.Registry, log *zap.Logger, cfg *config.Config) {
 			lc.Append(fx.Hook{
