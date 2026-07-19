@@ -29,10 +29,24 @@ RUN CGO_ENABLED=0 go build -ldflags="-s -w \
 	-X github.com/drupaldoesnotexists/redpolitika/ce/internal/buildinfo.License=${LICENSE}" \
 	-o /redpolitika ./cmd/api
 
+# Plugin builder — standalone Go modules for CE plugins
+FROM golang:1.26-alpine AS plugin-builder
+RUN apk add --no-cache protoc
+WORKDIR /build
+COPY ce-plugins/pages/go.mod ce-plugins/pages/go.sum ./
+RUN go mod download
+COPY ce-plugins/pages/ ./
+# Generate .pb.go from plugin-local .proto copies
+RUN protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative \
+    proto/identity/identity.proto proto/pages/pages.proto && \
+    CGO_ENABLED=0 go build -o /pages-plugin .
+
 # Runtime — Caddy ingress + Go API + Next.js
 FROM caddy:alpine
 RUN apk add --no-cache ca-certificates tzdata nodejs
 COPY --from=builder /redpolitika /usr/local/bin/redpolitika
+# CE plugins
+COPY --from=plugin-builder /pages-plugin /etc/redpolitika/plugins/pages
 
 # Next.js standalone output
 COPY --from=frontend /frontend/.next/standalone /nextjs
