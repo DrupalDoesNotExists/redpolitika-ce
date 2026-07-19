@@ -28,3 +28,10 @@ vendor/
 
 # Local build output
 /bin/
+
+# Plugin binaries (go-plugin compiled binaries)
+ce-plugins/*/pages
+ce-plugins/*/plugin
+
+# Generated protobuf Go code — regenerate via `make proto-gen`
+**/*.pb.go
