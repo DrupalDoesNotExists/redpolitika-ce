@@ -4,9 +4,8 @@ const API_ORIGIN = process.env.REDPOLITIKA_API_ORIGIN ?? "http://127.0.0.1:8080"
 const isProd = process.env.NODE_ENV === "production";
 
 const nextConfig: NextConfig = {
-  // Static export only for production builds (Go serves `out/`).
-  // In `next dev` we keep a normal server so API rewrites work.
-  ...(isProd ? { output: "export" as const } : {}),
+  // Standalone SSR: Caddy proxies /api/* to Go, /* to Next.js
+  ...(isProd ? { output: "standalone" as const } : {}),
   trailingSlash: true,
   reactCompiler: true,
   async rewrites() {

@@ -39,7 +39,7 @@ type Config struct {
 
 // Load reads configuration from environment variables.
 func Load() (*Config, error) {
-	port, err := getEnvInt("PORT", 8080)
+	port, err := getEnvInt("PORT", 8081)
 	if err != nil {
 		return nil, fmt.Errorf("load config: %w", err)
 	}
