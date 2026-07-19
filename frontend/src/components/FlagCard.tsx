@@ -131,46 +131,47 @@ export default function FlagCard({
 
         {/* Examples grid + auto suggestion row */}
         {(hasBadExamples || hasGoodExamples || flag.autoFix !== undefined) && (
-          <div
-            className="grid gap-x-6 gap-y-3.5 mb-3.5"
-            style={{ gridTemplateColumns: "1fr 1fr" }}
-          >
-            <div className="col">
-              <h4 className="text-xs leading-[18px] uppercase tracking-[0.04em] font-bold text-[#1a1a1a] mb-1.5">
+          <div className="flex flex-col gap-3.5 mb-3.5">
+            {/* Header row */}
+            <div className="grid gap-x-6" style={{ gridTemplateColumns: "1fr 1fr" }}>
+              <h4 className="text-xs leading-[18px] uppercase tracking-[0.04em] font-bold text-[#1a1a1a]">
                 Нет
               </h4>
-              {Array.from({ length: maxExamples }).map((_, i) => (
-                <p
-                  key={i}
-                  className="text-sm leading-[22px] text-[#1a1a1a] mb-1.5 last:mb-0"
-                >
-                  {flag.examples?.bad?.[i] ?? "\u00A0"}
-                </p>
-              ))}
-              {flag.autoFix !== undefined && (
-                <p className="text-[13px] leading-[22px] text-terra font-medium mb-1.5 last:mb-0">
-                  {flag.anchor.matchText}
-                </p>
-              )}
-            </div>
-            <div className="col">
-              <h4 className="text-xs leading-[18px] uppercase tracking-[0.04em] font-bold text-[#1a1a1a] mb-1.5">
+              <h4 className="text-xs leading-[18px] uppercase tracking-[0.04em] font-bold text-[#1a1a1a]">
                 Да
               </h4>
-              {Array.from({ length: maxExamples }).map((_, i) => (
-                <p
-                  key={i}
-                  className="text-sm leading-[22px] text-[#1a1a1a] mb-1.5 last:mb-0"
-                >
+            </div>
+
+            {/* Example pair rows */}
+            {Array.from({ length: maxExamples }).map((_, i) => (
+              <div
+                key={i}
+                className="grid gap-x-6"
+                style={{ gridTemplateColumns: "1fr 1fr" }}
+              >
+                <p className="text-sm leading-[22px] text-[#1a1a1a]">
+                  {flag.examples?.bad?.[i] ?? "\u00A0"}
+                </p>
+                <p className="text-sm leading-[22px] text-[#1a1a1a]">
                   {flag.examples?.good?.[i] ?? "\u00A0"}
                 </p>
-              ))}
-              {flag.autoFix !== undefined && (
-                <p className="text-[13px] leading-[22px] text-terra font-medium mb-1.5 last:mb-0">
+              </div>
+            ))}
+
+            {/* AutoFix row */}
+            {flag.autoFix !== undefined && (
+              <div
+                className="grid gap-x-6"
+                style={{ gridTemplateColumns: "1fr 1fr" }}
+              >
+                <p className="text-[13px] leading-[22px] text-terra font-medium">
+                  {flag.anchor.matchText}
+                </p>
+                <p className="text-[13px] leading-[22px] text-terra font-medium">
                   {flag.autoFix === "" ? (<span className="opacity-60">удалить</span>) : flag.autoFix}
                 </p>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         )}
 
