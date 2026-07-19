@@ -6,11 +6,12 @@ import MarkdownPage from "@/components/MarkdownPage";
 
 const queryClient = new QueryClient();
 
-export default function Page({ params }: { params: Promise<{ slug: string }> }) {
+export default function Page({ params }: { params: Promise<{ slug: string[] }> }) {
   const { slug } = use(params);
+  const path = slug?.join("/") ?? "";
   return (
     <QueryClientProvider client={queryClient}>
-      <MarkdownPage slug={slug} />
+      <MarkdownPage slug={path} />
     </QueryClientProvider>
   );
 }
