@@ -23,6 +23,9 @@ func NewPagesHandler(provider ports.StaticPagesProvider, logger *zap.Logger) *Pa
 
 // ListPages returns all static pages as JSON.
 func (h *PagesHandler) ListPages(c echo.Context) error {
+	if h.provider == nil {
+		return c.JSON(http.StatusOK, []model.Page{})
+	}
 	pages, err := h.provider.ListPages(c.Request().Context())
 	if err != nil {
 		h.logger.Error("list pages", zap.Error(err))
@@ -36,6 +39,9 @@ func (h *PagesHandler) ListPages(c echo.Context) error {
 
 // GetPage returns a single page as JSON.
 func (h *PagesHandler) GetPage(c echo.Context) error {
+	if h.provider == nil {
+		return echo.NewHTTPError(http.StatusNotFound, "page not found")
+	}
 	slug := c.Param("slug")
 	page, err := h.provider.GetPage(c.Request().Context(), slug)
 	if err != nil {

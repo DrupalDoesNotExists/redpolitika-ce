@@ -7,18 +7,18 @@ services:
     ports:
       - "8080:8080"
     environment:
-      PORT: "8080"
       LOG_LEVEL: info
       ENVIRONMENT: development
-      STATIC_DIR: /frontend/out
       RULES_DIR: /etc/redpolitika/rules
       PLUGINS_DIR: /etc/redpolitika/plugins
+      PLUGIN_PAGES_FLAGS: "--pages-dir=/etc/redpolitika/pages"
       DB_DRIVER: sqlite
       DB_DSN: file:/data/redpolitika.db?cache=shared&_journal_mode=WAL
     volumes:
       # Mount your YAML rules here (image ships with an empty dir)
       - ./rules:/etc/redpolitika/rules:ro
       - ./plugins:/etc/redpolitika/plugins:ro
+      - ./pages:/etc/redpolitika/pages:ro
       - redpolitika_data:/data
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/health"]
