@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
   async rewrites() {
     if (isProd) return [];
     return [
-      { source: "/api/:path*", destination: `${API_ORIGIN}/api/:path*` },
+      { source: "/api/:path*", destination: `${API_ORIGIN}/:path*` },
       { source: "/version", destination: `${API_ORIGIN}/version` },
       { source: "/health", destination: `${API_ORIGIN}/health` },
       { source: "/healthz", destination: `${API_ORIGIN}/healthz` },

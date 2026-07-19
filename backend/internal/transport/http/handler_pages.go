@@ -35,6 +35,10 @@ func (h *PagesHandler) ListPages(c echo.Context) error {
 func (h *PagesHandler) GetPage(c echo.Context) error {
 	slug := c.Param("*slug")
 	slug = strings.TrimPrefix(slug, "/")
+	slug = strings.TrimSuffix(slug, "/")
+	if slug == "" {
+		return echo.NewHTTPError(http.StatusNotFound, "page not found")
+	}
 	page, err := h.pagesUC.GetPage(c.Request().Context(), slug)
 	if err != nil {
 		h.logger.Error("get page", zap.String("slug", slug), zap.Error(err))
