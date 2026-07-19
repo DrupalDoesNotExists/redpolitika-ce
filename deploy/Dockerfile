@@ -55,7 +55,7 @@ FROM caddy:alpine
 RUN apk add --no-cache ca-certificates tzdata nodejs
 COPY --from=builder /redpolitika /usr/local/bin/redpolitika
 # CE plugins
-COPY --from=plugin-builder /pages-plugin /etc/redpolitika/plugins/pages
+COPY --from=plugin-builder /pages-plugin /etc/redpolitika/plugins/redpolitika-pages
 
 # Next.js standalone output
 COPY --from=frontend /frontend/.next/standalone /nextjs
