@@ -14,11 +14,9 @@ type DetectAdapter struct {
 	registry *Registry
 }
 
-// NewDetectAdapter creates a DetectAdapter if any plugin provides detect capability.
+// NewDetectAdapter creates a DetectAdapter.
+// Plugin lookup deferred to call time — plugins load during OnStart, after construction.
 func NewDetectAdapter(registry *Registry) ports.DetectFunctionProvider {
-	if len(registry.FindByCapability(CapDetectProvider)) == 0 {
-		return nil
-	}
 	return &DetectAdapter{registry: registry}
 }
 

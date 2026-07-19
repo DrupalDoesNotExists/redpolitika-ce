@@ -11,20 +11,22 @@ import (
 
 // LLMAdapter adapts plugin LLMService into domain LLMProvider.
 type LLMAdapter struct {
-	client llm.LLMServiceClient
+	registry *Registry
 }
 
-// NewLLMAdapter creates an LLMAdapter from the first plugin with llm.provider capability.
+// NewLLMAdapter creates an LLMAdapter.
+// Plugin lookup deferred to call time — plugins load during OnStart, after construction.
 func NewLLMAdapter(registry *Registry) ports.LLMProvider {
-	plugins := registry.FindByCapability(CapLLMProvider)
-	if len(plugins) == 0 {
-		return nil
-	}
-	return &LLMAdapter{client: llm.NewLLMServiceClient(plugins[0].Conn)}
+	return &LLMAdapter{registry: registry}
 }
 
 func (a *LLMAdapter) CheckText(ctx context.Context, text string, rule *model.Rule) ([]*model.Flag, error) {
-	resp, err := a.client.Analyze(ctx, &llm.AnalyzeRequest{
+	plugins := a.registry.FindByCapability(CapLLMProvider)
+	if len(plugins) == 0 {
+		return nil, fmt.Errorf("llm: no plugin with %q capability", CapLLMProvider)
+	}
+	client := llm.NewLLMServiceClient(plugins[0].Conn)
+	resp, err := client.Analyze(ctx, &llm.AnalyzeRequest{
 		Text:   text,
 		RuleId: rule.ID().Value(),
 	})

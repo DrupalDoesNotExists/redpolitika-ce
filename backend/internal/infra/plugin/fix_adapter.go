@@ -11,20 +11,22 @@ import (
 
 // FixAdapter adapts plugin FixService into domain FixFunctionProvider.
 type FixAdapter struct {
-	client fix.FixServiceClient
+	registry *Registry
 }
 
-// NewFixAdapter creates a FixAdapter from the first plugin with fix.provider capability.
+// NewFixAdapter creates a FixAdapter.
+// Plugin lookup deferred to call time — plugins load during OnStart, after construction.
 func NewFixAdapter(registry *Registry) ports.FixFunctionProvider {
-	plugins := registry.FindByCapability(CapFixProvider)
-	if len(plugins) == 0 {
-		return nil
-	}
-	return &FixAdapter{client: fix.NewFixServiceClient(plugins[0].Conn)}
+	return &FixAdapter{registry: registry}
 }
 
 func (a *FixAdapter) Fix(ctx context.Context, text string, flag *model.Flag) (string, error) {
-	resp, err := a.client.Fix(ctx, &fix.FixRequest{
+	plugins := a.registry.FindByCapability(CapFixProvider)
+	if len(plugins) == 0 {
+		return "", fmt.Errorf("fix: no plugin with %q capability", CapFixProvider)
+	}
+	client := fix.NewFixServiceClient(plugins[0].Conn)
+	resp, err := client.Fix(ctx, &fix.FixRequest{
 		Text:      text,
 		RuleId:    flag.RuleID().Value(),
 		MatchText: flag.MatchText().Value(),
