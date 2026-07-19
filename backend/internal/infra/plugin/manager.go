@@ -71,7 +71,7 @@ func (m *Manager) ScanDir(ctx context.Context, reg *Registry, dir string) ([]str
 		client := goplugin.NewClient(&goplugin.ClientConfig{
 			HandshakeConfig:  handshake,
 			Plugins:          goplugin.PluginSet{name: p},
-			Cmd:              exec.CommandContext(ctx, bin, pluginArgs...),
+			Cmd:              exec.CommandContext(context.Background(), bin, pluginArgs...),
 			AllowedProtocols: []goplugin.Protocol{goplugin.ProtocolGRPC},
 			Logger: hclog.New(&hclog.LoggerOptions{
 				Name:  "plugin." + name,
