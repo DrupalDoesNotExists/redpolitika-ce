@@ -165,10 +165,14 @@ function cleanDelete(text: string): string {
     .replace(/\s+$/, "");
 }
 
-/** Re-resolve spans from anchors after text mutation; drop unresolvable. */
+/** Re-resolve spans from anchors after text mutation.
+ *  strict=true  (default): drop unresolvable flags (user typed new text).
+ *  strict=false: keep unresolvable with old span — WS check_result will
+ *  replace/remove them shortly (used after applyFlagFix/applyAllAccepted). */
 function reresolveFlags(
   flags: Record<string, FlagState>,
   text: string,
+  strict = true,
 ): Record<string, FlagState> {
   const next = { ...flags };
   for (const id of Object.keys(next)) {
@@ -177,9 +181,10 @@ function reresolveFlags(
     const span = anchorToSpan(text, f.anchor);
     if (span) {
       next[id] = { ...f, span };
-    } else {
+    } else if (strict) {
       delete next[id];
     }
+    // non-strict: keep flag with old span — WS response will correct
   }
   return next;
 }
@@ -335,7 +340,7 @@ export const useStore = create<StoreState>()((set, get) => ({
       sentenceCount: sentenceCount(newText),
       charCount: charCount(newText),
       // Keep remaining highlights valid until the next WS check_result
-      flags: reresolveFlags(flags, newText),
+      flags: reresolveFlags(flags, newText, false), // non-strict: WS will resolve
     });
     return newText;
   },
@@ -375,7 +380,7 @@ export const useStore = create<StoreState>()((set, get) => ({
       wordCount: wordCount(newText),
       sentenceCount: sentenceCount(newText),
       charCount: charCount(newText),
-      flags: reresolveFlags(flags, newText),
+      flags: reresolveFlags(flags, newText, false), // non-strict: WS will resolve
     });
     return newText;
   },
