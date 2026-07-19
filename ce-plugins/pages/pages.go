@@ -93,26 +93,59 @@ func (s *pagesService) ListPages(_ context.Context, _ *pagespb.ListPagesRequest)
 	return &pagespb.ListPagesResponse{Pages: pages}, nil
 }
 
+// isPathWithin reports whether targetPath is strictly inside basePath.
+func isPathWithin(basePath, targetPath string) (bool, error) {
+	absBase, err := filepath.Abs(basePath)
+	if err != nil {
+		return false, fmt.Errorf("resolve base: %w", err)
+	}
+	absTarget, err := filepath.Abs(targetPath)
+	if err != nil {
+		return false, fmt.Errorf("resolve target: %w", err)
+	}
+	rel, err := filepath.Rel(absBase, absTarget)
+	if err != nil {
+		return false, fmt.Errorf("rel: %w", err)
+	}
+	// Rel returns a path starting with ".." when target is outside base.
+	return !strings.HasPrefix(rel, "..") && rel != "." && rel != "", nil
+}
+
+// cleanSlug normalises a slug and rejects path traversal.
+// Returns the cleaned slug or an error.
+func cleanSlug(slug string) (string, error) {
+	clean := filepath.Clean(slug)
+
+	// filepath.Clean(".") → "." — treat as empty.
+	if clean == "." || clean == "" {
+		return "", fmt.Errorf("empty slug")
+	}
+	// filepath.Clean keeps a leading "/" for absolute paths.
+	if strings.HasPrefix(clean, "/") {
+		return "", fmt.Errorf("absolute slug")
+	}
+	// After clean, ".." only remains if there was unclean traversal.
+	if strings.HasPrefix(clean, "..") || strings.Contains(clean, "..") {
+		return "", fmt.Errorf("path traversal")
+	}
+
+	return clean, nil
+}
+
 // GetPage reads slug.md from pagesDir and returns full content.
 func (s *pagesService) GetPage(_ context.Context, req *pagespb.GetPageRequest) (*pagespb.GetPageResponse, error) {
-	// Sanitize slug — deny path separators and traversal.
-	if strings.Contains(req.Slug, "..") {
-		return nil, fmt.Errorf("invalid slug: %q", req.Slug)
-	}
-	slug := req.Slug
-
-	path := filepath.Join(pagesDir, slug) + ".md"
-
-	// Resolve to absolute paths to verify the result stays under pagesDir.
-	absPagesDir, err := filepath.Abs(pagesDir)
+	slug, err := cleanSlug(req.Slug)
 	if err != nil {
-		return nil, fmt.Errorf("resolve pages dir: %w", err)
+		return nil, fmt.Errorf("invalid slug: %q: %w", req.Slug, err)
 	}
-	absPath, err := filepath.Abs(path)
+
+	path := filepath.Join(pagesDir, slug+".md")
+
+	within, err := isPathWithin(pagesDir, path)
 	if err != nil {
-		return nil, fmt.Errorf("resolve page path: %w", err)
+		return nil, fmt.Errorf("path check: %w", err)
 	}
-	if !strings.HasPrefix(absPath, absPagesDir) {
+	if !within {
 		return nil, fmt.Errorf("access denied: %q", req.Slug)
 	}
 
