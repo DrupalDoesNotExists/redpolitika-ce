@@ -31,7 +31,7 @@ func RegisterRoutes(
 
 	// Pages — static content pages from plugins (Level 1 data EP)
 	e.GET("/pages", pages.ListPages)
-	e.GET("/pages/:slug", pages.GetPage)
+	e.GET("/pages/*slug", pages.GetPage)
 
 	// WebSocket
 	e.GET("/ws/live", live.Handle)

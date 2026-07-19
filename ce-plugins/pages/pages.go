@@ -53,26 +53,37 @@ type pagesService struct {
 	pagespb.UnimplementedPagesServiceServer
 }
 
-// ListPages scans pagesDir for *.md files and returns their slug + metadata.
+// ListPages scans pagesDir recursively for *.md files and returns their slug + metadata.
 func (s *pagesService) ListPages(_ context.Context, _ *pagespb.ListPagesRequest) (*pagespb.ListPagesResponse, error) {
-	entries, err := os.ReadDir(pagesDir)
-	if err != nil {
-		return nil, fmt.Errorf("read pages dir %q: %w", pagesDir, err)
-	}
-
 	var pages []*pagespb.Page
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") {
-			continue
+
+	err := filepath.WalkDir(pagesDir, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
 		}
-		slug := strings.TrimSuffix(e.Name(), ".md")
-		title, desc, lang := pageMetadata(filepath.Join(pagesDir, e.Name()), slug)
+		if d.IsDir() {
+			return nil // skip dirs, recurse into them
+		}
+		if !strings.HasSuffix(d.Name(), ".md") {
+			return nil
+		}
+		// Compute relative slug from pagesDir: "docs/page-1" from "pagesDir/docs/page-1.md"
+		rel, err := filepath.Rel(pagesDir, path)
+		if err != nil {
+			return err
+		}
+		slug := strings.TrimSuffix(rel, ".md")
+		title, desc, lang := pageMetadata(path, slug)
 		pages = append(pages, &pagespb.Page{
 			Slug:        slug,
 			Title:       title,
 			Description: desc,
 			Language:    lang,
 		})
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("walk pages dir %q: %w", pagesDir, err)
 	}
 
 	if pages == nil {
@@ -85,12 +96,12 @@ func (s *pagesService) ListPages(_ context.Context, _ *pagespb.ListPagesRequest)
 // GetPage reads slug.md from pagesDir and returns full content.
 func (s *pagesService) GetPage(_ context.Context, req *pagespb.GetPageRequest) (*pagespb.GetPageResponse, error) {
 	// Sanitize slug — deny path separators and traversal.
-	if strings.ContainsAny(req.Slug, "/\\") || strings.Contains(req.Slug, "..") {
+	if strings.Contains(req.Slug, "..") {
 		return nil, fmt.Errorf("invalid slug: %q", req.Slug)
 	}
 	slug := req.Slug
 
-	path := filepath.Join(pagesDir, slug+".md")
+	path := filepath.Join(pagesDir, slug) + ".md"
 
 	// Resolve to absolute paths to verify the result stays under pagesDir.
 	absPagesDir, err := filepath.Abs(pagesDir)
