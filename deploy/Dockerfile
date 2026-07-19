@@ -8,7 +8,9 @@ RUN npm run build
 
 # Go builder
 FROM golang:1.26-alpine AS builder
-RUN apk add --no-cache protoc
+RUN apk add --no-cache protoc && \
+	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest && \
+	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 WORKDIR /build
 ARG VERSION=dev
 ARG COMMIT=unknown
@@ -31,7 +33,9 @@ RUN CGO_ENABLED=0 go build -ldflags="-s -w \
 
 # Plugin builder — standalone Go modules for CE plugins
 FROM golang:1.26-alpine AS plugin-builder
-RUN apk add --no-cache protoc
+RUN apk add --no-cache protoc && \
+	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest && \
+	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 WORKDIR /build
 COPY ce-plugins/pages/go.mod ce-plugins/pages/go.sum ./
 RUN go mod download
