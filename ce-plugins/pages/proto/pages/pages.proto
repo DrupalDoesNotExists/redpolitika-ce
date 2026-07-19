@@ -1,0 +1,30 @@
+syntax = "proto3";
+package pages;
+option go_package = "github.com/drupaldoesnotexists/redpolitika/ce/plugins/pages/proto/pages";
+
+service PagesService {
+    rpc ListPages(ListPagesRequest) returns (ListPagesResponse);
+    rpc GetPage(GetPageRequest) returns (GetPageResponse);
+}
+
+message Page {
+    string slug = 1;
+    string title = 2;
+    string content_markdown = 3;
+    string description = 4;
+    string language = 5;
+}
+
+message ListPagesRequest {}
+
+message ListPagesResponse {
+    repeated Page pages = 1;
+}
+
+message GetPageRequest {
+    string slug = 1;
+}
+
+message GetPageResponse {
+    Page page = 1;
+}

@@ -1,0 +1,20 @@
+syntax = "proto3";
+package identity;
+option go_package = "github.com/drupaldoesnotexists/redpolitika/ce/plugins/pages/proto/identity";
+
+service PluginIdentity {
+  rpc GetCapabilities(GetCapabilitiesRequest) returns (GetCapabilitiesResponse);
+}
+
+message GetCapabilitiesRequest {}
+
+message GetCapabilitiesResponse {
+  repeated string capabilities = 1;
+  repeated string methods = 2;
+}
+
+message MethodInfo {
+  string name = 1;
+  string route = 2;
+  string frontend_asset_path = 3;
+}
