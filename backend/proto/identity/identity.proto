@@ -3,18 +3,12 @@ package identity;
 option go_package = "github.com/redpolitika/redpolitika-ce/backend/proto/identity";
 
 service PluginIdentity {
-  rpc GetCapabilities(Empty) returns (CapabilitiesResponse);
+  rpc GetCapabilities(GetCapabilitiesRequest) returns (GetCapabilitiesResponse);
 }
 
-message Empty {}
+message GetCapabilitiesRequest {}
 
-message MethodInfo {
-  string name = 1;
-  string route = 2; // URL prefix, e.g. "/articles/"
-  string frontend_asset_path = 3; // path to JS bundle in GetAsset, e.g. "plugin.js"
-}
-
-message CapabilitiesResponse {
-  repeated string capability_ids = 1; // dot-separated, e.g. "static.pages"
-  repeated MethodInfo methods = 2;
+message GetCapabilitiesResponse {
+  repeated string capabilities = 1; // dot-separated capability IDs, e.g. "static.pages"
+  repeated string methods = 2;      // method names for this plugin
 }
