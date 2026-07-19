@@ -202,6 +202,19 @@ var knownDetectMethods = map[string]bool{
 	"and": true, "or": true, "not": true,
 	"threshold": true, "near": true, "exclude": true,
 	"llm": true, "plugin": true, "ner": true, "pos": true, "function": true, "expr": true,
+	"ref": true,
+}
+
+// unresolvedRef captures a RefNode that needs resolution after all rules are parsed.
+type unresolvedRef struct {
+	Node   *detect.RefNode
+	RuleID string // owning rule ID (for error messages and cycle detection)
+}
+
+// ParseResult holds the results of parsing YAML.
+type ParseResult struct {
+	Rules []*model.Rule
+	Refs  []unresolvedRef
 }
 
 // flatDetectNode is a shadow type without UnmarshalYAML to avoid infinite recursion.
@@ -537,7 +550,7 @@ func (n *FixNodeYAML) UnmarshalYAML(value *yaml.Node) error {
 // buildDetectNode recursively builds a detect tree from YAML node.
 // Returns (detectNode, detectMethod, error).
 // For server-side methods (llm/plugin), detectNode is nil.
-func buildDetectNode(ny *DetectNodeYAML) (detect.Node, string, error) {
+func buildDetectNode(ny *DetectNodeYAML, ruleID string, refs *[]unresolvedRef) (detect.Node, string, error) {
 	method := ny.Method
 
 	// Backward compat: infer method from fields
@@ -557,6 +570,19 @@ func buildDetectNode(ny *DetectNodeYAML) (detect.Node, string, error) {
 		return nil, method, nil
 	}
 
+	// ref method — creates a RefNode that will be resolved phase 2
+	if method == "ref" {
+		refID := ny.Pattern
+		if refID == "" {
+			return nil, "", &Error{Op: "buildDetectNode", Message: "ref method requires a rule ID"}
+		}
+		refNode := detect.NewRefNode(refID)
+		if refs != nil {
+			*refs = append(*refs, unresolvedRef{Node: refNode, RuleID: ruleID})
+		}
+		return refNode, method, nil
+	}
+
 	if method == "" {
 		// No method and no inferrable fields — treat as noop (returns nil)
 		return nil, "", nil
@@ -567,7 +593,7 @@ func buildDetectNode(ny *DetectNodeYAML) (detect.Node, string, error) {
 
 	// 1. Args array (and/or logical operators)
 	for i := range ny.Args {
-		child, _, err := buildDetectNode(&ny.Args[i])
+		child, _, err := buildDetectNode(&ny.Args[i], ruleID, refs)
 		if err != nil {
 			return nil, "", &Error{Op: "buildDetectNode", Message: "build child " + ny.Args[i].Method, Err: err}
 		}
@@ -578,7 +604,7 @@ func buildDetectNode(ny *DetectNodeYAML) (detect.Node, string, error) {
 
 	// 2. ChildNode (inner filter for length/case/position/contextual)
 	if ny.ChildNode != nil {
-		child, _, err := buildDetectNode(ny.ChildNode)
+		child, _, err := buildDetectNode(ny.ChildNode, ruleID, refs)
 		if err != nil {
 			return nil, "", &Error{Op: "buildDetectNode", Message: "build child " + ny.ChildNode.Method, Err: err}
 		}
@@ -589,7 +615,7 @@ func buildDetectNode(ny *DetectNodeYAML) (detect.Node, string, error) {
 
 	// 3. PatternNode (anchor pattern for before/after/near)
 	if ny.PatternNode != nil {
-		child, _, err := buildDetectNode(ny.PatternNode)
+		child, _, err := buildDetectNode(ny.PatternNode, ruleID, refs)
 		if err != nil {
 			return nil, "", &Error{Op: "buildDetectNode", Message: "build child " + ny.PatternNode.Method, Err: err}
 		}
@@ -600,7 +626,7 @@ func buildDetectNode(ny *DetectNodeYAML) (detect.Node, string, error) {
 
 	// 4. NearNode (second pattern for near)
 	if ny.NearNode != nil {
-		child, _, err := buildDetectNode(ny.NearNode)
+		child, _, err := buildDetectNode(ny.NearNode, ruleID, refs)
 		if err != nil {
 			return nil, "", &Error{Op: "buildDetectNode", Message: "build near " + ny.NearNode.Method, Err: err}
 		}
@@ -611,7 +637,7 @@ func buildDetectNode(ny *DetectNodeYAML) (detect.Node, string, error) {
 
 	// 5. IfNode (conditional detection)
 	if ny.IfNode != nil {
-		child, _, err := buildDetectNode(ny.IfNode)
+		child, _, err := buildDetectNode(ny.IfNode, ruleID, refs)
 		if err != nil {
 			return nil, "", &Error{Op: "buildDetectNode", Message: "build child " + ny.IfNode.Method, Err: err}
 		}
@@ -672,7 +698,7 @@ func buildFixNode(ny *FixNodeYAML) (fix.Node, error) {
 		if ny.WhenDetect != nil {
 			var detectMethod string // not used
 			var err error
-			condition, detectMethod, err = buildDetectNode(ny.WhenDetect)
+			condition, detectMethod, err = buildDetectNode(ny.WhenDetect, "", nil)
 			if err != nil {
 				return nil, &Error{Op: "buildFixNode", Message: "build when condition", Err: err}
 			}
@@ -699,26 +725,28 @@ func buildFixNode(ny *FixNodeYAML) (fix.Node, error) {
 
 // ParseYAML parses raw YAML bytes into domain Rule objects.
 // Supports both old flat format and new nested method tree format (SPEC §8, A26/Q33).
-func ParseYAML(data []byte) ([]*model.Rule, error) {
+// Returns a ParseResult which includes refs that need resolution phase 2.
+func ParseYAML(data []byte) (ParseResult, error) {
 	var rf RulesFile
 	if err := yaml.Unmarshal(data, &rf); err != nil {
-		return nil, &Error{Op: "ParseYAML", Message: "invalid YAML", Err: err}
+		return ParseResult{}, &Error{Op: "ParseYAML", Message: "invalid YAML", Err: err}
 	}
 
 	var rules []*model.Rule
+	var refs []unresolvedRef
 	for _, ry := range rf.Rules {
-		rule, err := ruleFromYAML(ry)
+		rule, err := ruleFromYAML(ry, &refs)
 		if err != nil {
-			return nil, err
+			return ParseResult{}, err
 		}
 		rules = append(rules, rule)
 	}
 
-	return rules, nil
+	return ParseResult{Rules: rules, Refs: refs}, nil
 }
 
 // ruleFromYAML converts a RuleYAML to a domain Rule.
-func ruleFromYAML(ry RuleYAML) (*model.Rule, error) {
+func ruleFromYAML(ry RuleYAML, refs *[]unresolvedRef) (*model.Rule, error) {
 	// Handle disable-only overrides
 	if ry.Disable {
 		if _, err := model.RuleIDFromString(ry.ID); err != nil {
@@ -732,7 +760,7 @@ func ruleFromYAML(ry RuleYAML) (*model.Rule, error) {
 	}
 
 	// Build detect tree
-	detectNode, detectMethod, err := buildDetectNode(&ry.Detect)
+	detectNode, detectMethod, err := buildDetectNode(&ry.Detect, ry.ID, refs)
 	if err != nil {
 		return nil, &Error{Op: "ParseYAML", Message: "build detect for " + ry.ID, Err: err}
 	}

@@ -19,10 +19,11 @@ rules:
           pattern: "[а-яё]"
           case_sensitive: true
 `)
-	parsed, err := ParseYAML(data)
+	result, err := ParseYAML(data)
 	if err != nil {
 		t.Fatal(err)
 	}
+	parsed := result.Rules
 	if len(parsed) != 1 {
 		t.Fatalf("expected 1 rule, got %d", len(parsed))
 	}
@@ -69,10 +70,11 @@ rules:
         child:
           regex: "[^.!?\\n]*[.!?]"
 `)
-	parsed, err := ParseYAML(data)
+	result, err := ParseYAML(data)
 	if err != nil {
 		t.Fatal(err)
 	}
+	parsed := result.Rules
 	if len(parsed) != 2 {
 		t.Fatalf("expected 2 rules, got %d", len(parsed))
 	}
@@ -123,10 +125,11 @@ rules:
         with: "…"
       suggestion: "Замените три точки на символ многоточия"
 `)
-	parsed, err := ParseYAML(data)
+	result, err := ParseYAML(data)
 	if err != nil {
 		t.Fatal(err)
 	}
+	parsed := result.Rules
 	if len(parsed) != 1 {
 		t.Fatalf("expected 1 rule, got %d", len(parsed))
 	}
@@ -165,10 +168,11 @@ rules:
           pattern: "[а-яёА-ЯЁa-zA-Z0-9»\")\\]]"
           case_sensitive: true
 `)
-	parsed, err := ParseYAML(data)
+	result, err := ParseYAML(data)
 	if err != nil {
 		t.Fatal(err)
 	}
+	parsed := result.Rules
 	var capital, period detect.Node
 	for _, r := range parsed {
 		switch r.ID().String() {
