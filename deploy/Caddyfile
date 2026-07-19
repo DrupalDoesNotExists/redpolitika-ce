@@ -1,5 +1,5 @@
 :8080 {
-    @api path /api/* /ws/*
+    @api path /api/* /ws/* /healthz /health /version /metrics
     handle @api {
         reverse_proxy 127.0.0.1:8081
     }
