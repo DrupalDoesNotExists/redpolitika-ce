@@ -21,19 +21,17 @@ func RegisterRoutes(
 	// Health
 	e.GET("/health", health.Health)
 	e.GET("/healthz", health.Health)
-	e.GET("/api/healthz", health.Health)
 	e.GET("/version", health.Version)
-	e.GET("/api/version", health.Version)
 	e.GET("/metrics", health.Metrics())
 
 	// API
-	e.GET("/api/client-rules", clientRules.Handle)
-	e.POST("/api/analyze", analyze.Handle)
-	e.GET("/api/rules", rules.Handle)
+	e.GET("/client-rules", clientRules.Handle)
+	e.POST("/analyze", analyze.Handle)
+	e.GET("/rules", rules.Handle)
 
 	// Pages — static content pages from plugins (Level 1 data EP)
-	e.GET("/api/pages", pages.ListPages)
-	e.GET("/api/pages/:slug", pages.GetPage)
+	e.GET("/pages", pages.ListPages)
+	e.GET("/pages/:slug", pages.GetPage)
 
 	// WebSocket
 	e.GET("/ws/live", live.Handle)

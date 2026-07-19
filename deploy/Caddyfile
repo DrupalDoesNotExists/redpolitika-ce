@@ -1,6 +1,7 @@
 :8080 {
     @api path /api/* /ws/* /healthz /health /version /metrics
     handle @api {
+        uri strip_prefix /api
         reverse_proxy 127.0.0.1:8081
     }
     handle {
