@@ -122,6 +122,7 @@ func main() {
 			usecase.NewAcceptRejectFlagUseCase,
 			usecase.NewApplyFixUseCase,
 			usecase.NewRegisterPluginUseCase,
+			usecase.NewPagesUseCase,
 		),
 
 		// Transport layers
