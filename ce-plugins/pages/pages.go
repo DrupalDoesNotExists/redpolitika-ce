@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	pagespb "github.com/drupaldoesnotexists/redpolitika/ce/plugins/pages/proto/pages"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"gopkg.in/yaml.v3"
 )
 
@@ -106,7 +108,7 @@ func (s *pagesService) GetPage(_ context.Context, req *pagespb.GetPageRequest) (
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("page not found: %q", req.Slug)
+			return nil, status.Error(codes.NotFound, fmt.Sprintf("page not found: %q", req.Slug))
 		}
 		return nil, fmt.Errorf("read page %q: %w", req.Slug, err)
 	}

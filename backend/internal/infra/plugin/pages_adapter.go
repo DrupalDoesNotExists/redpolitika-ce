@@ -7,6 +7,8 @@ import (
 	"github.com/drupaldoesnotexists/redpolitika/ce/internal/domain/model"
 	"github.com/drupaldoesnotexists/redpolitika/ce/internal/domain/ports"
 	pagespb "github.com/drupaldoesnotexists/redpolitika/ce/proto/pages"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // PagesAdapter implements ports.StaticPagesProvider via plugin gRPC.
@@ -51,6 +53,9 @@ func (a *PagesAdapter) GetPage(ctx context.Context, slug string) (*model.Page, e
 	client := pagespb.NewPagesServiceClient(plugins[0].Conn)
 	resp, err := client.GetPage(ctx, &pagespb.GetPageRequest{Slug: slug})
 	if err != nil {
+		if status.Code(err) == codes.NotFound {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("pages adapter: get: %w", err)
 	}
 	if resp.Page == nil {
