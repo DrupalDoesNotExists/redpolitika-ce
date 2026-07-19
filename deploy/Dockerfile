@@ -60,18 +60,23 @@ RUN chmod +x /entrypoint.sh
 
 # Expose Caddy port
 EXPOSE 8080
-VOLUME ["/data", "/etc/redpolitika/rules", "/etc/redpolitika/plugins"]
+VOLUME ["/data", "/etc/redpolitika/rules", "/etc/redpolitika/plugins", "/etc/redpolitika/pages"]
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 	CMD wget -qO- "http://127.0.0.1:8080/health" || exit 1
 
-# ENVs for Go API (PORT set by entrypoint)
-ENV LOG_LEVEL=info \
+# ENVs for Go API + plugins (all config.Config fields)
+ENV PORT=8081 \
+	LOG_LEVEL=info \
 	ENVIRONMENT=production \
 	STATIC_DIR=/frontend/out \
 	RULES_DIR=/etc/redpolitika/rules \
-	PLUGINS_DIR=/etc/redpolitika/plugins \
+	RULES_PROJECT_DIR= \
+	RULES_OVERRIDE_DIR= \
 	DB_DRIVER=sqlite \
-	DB_DSN=file:/data/redpolitika.db?cache=shared&_journal_mode=WAL
+	DB_DSN=file:/data/redpolitika.db?cache=shared&_journal_mode=WAL \
+	PLUGINS_DIR=/etc/redpolitika/plugins \
+	PARAGRAPH_SEPARATOR= \
+	PLUGIN_PAGES_FLAGS=--pages-dir=/etc/redpolitika/pages
 
 ENTRYPOINT ["/entrypoint.sh"]

@@ -13,6 +13,7 @@ import (
 )
 
 // pagesDir is the directory containing .md files to serve.
+// Configured via --pages-dir flag, passed by core from PLUGINS_FLAGS.
 var pagesDir string
 
 func main() {

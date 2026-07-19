@@ -4,8 +4,10 @@ package plugin
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -41,6 +43,7 @@ func NewManager(logger *zap.Logger) *Manager {
 
 // ScanDir discovers and starts all plugin binaries in dir.
 // After handshake, calls GetCapabilities to discover extension points (A15/A27).
+// Per-plugin CLI flags passed via PLUGIN_<NAME>_FLAGS env vars (e.g. PLUGIN_PAGES_FLAGS).
 func (m *Manager) ScanDir(ctx context.Context, reg *Registry, dir string) ([]string, error) {
 	binaries, err := goplugin.Discover("redpolitika-*", dir)
 	if err != nil {
@@ -54,11 +57,21 @@ func (m *Manager) ScanDir(ctx context.Context, reg *Registry, dir string) ([]str
 			continue
 		}
 
+		// Load per-plugin flags from PLUGIN_<NAME>_FLAGS env var.
+		// e.g. redpolitika-pages → PLUGIN_PAGES_FLAGS
+		pluginSuffix := strings.TrimPrefix(name, "redpolitika-")
+		envKey := "PLUGIN_" + strings.ToUpper(strings.ReplaceAll(pluginSuffix, "-", "_")) + "_FLAGS"
+		var pluginArgs []string
+		if flags := os.Getenv(envKey); flags != "" {
+			pluginArgs = strings.Fields(flags)
+			m.logger.Info("plugin flags", zap.String("name", name), zap.String("env", envKey), zap.Strings("args", pluginArgs))
+		}
+
 		p := &Plugin{}
 		client := goplugin.NewClient(&goplugin.ClientConfig{
 			HandshakeConfig:  handshake,
 			Plugins:          goplugin.PluginSet{name: p},
-			Cmd:              exec.CommandContext(ctx, bin),
+			Cmd:              exec.CommandContext(ctx, bin, pluginArgs...),
 			AllowedProtocols: []goplugin.Protocol{goplugin.ProtocolGRPC},
 			Logger: hclog.New(&hclog.LoggerOptions{
 				Name:  "plugin." + name,
