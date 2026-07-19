@@ -14,12 +14,9 @@ type PagesAdapter struct {
 	registry *Registry
 }
 
-// NewPagesAdapter creates a PagesAdapter if any plugin provides static.pages capability.
+// NewPagesAdapter creates a PagesAdapter.
+// Plugin lookup deferred to call time — plugins load during OnStart, after construction.
 func NewPagesAdapter(registry *Registry) ports.StaticPagesProvider {
-	plugins := registry.FindByCapability(CapPages)
-	if len(plugins) == 0 {
-		return nil
-	}
 	return &PagesAdapter{registry: registry}
 }
 
