@@ -13,6 +13,8 @@ import (
 	goplugin "github.com/hashicorp/go-plugin"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+
+	"github.com/drupaldoesnotexists/redpolitika/ce/proto/identity"
 )
 
 var handshake = goplugin.HandshakeConfig{
@@ -23,7 +25,6 @@ var handshake = goplugin.HandshakeConfig{
 
 // Manager manages plugin lifecycle.
 // No archetypes (A15) — plugins are opaque binaries speaking gRPC.
-// The caller decides which service to call on the connection.
 type Manager struct {
 	logger  *zap.Logger
 	clients map[string]*goplugin.Client
@@ -39,8 +40,7 @@ func NewManager(logger *zap.Logger) *Manager {
 }
 
 // ScanDir discovers and starts all plugin binaries in dir.
-// Any binary matching "redpolitika-*" is launched as a go-plugin process.
-// Its *grpc.ClientConn is registered in Registry under the binary name.
+// After handshake, calls GetCapabilities to discover extension points (A15/A27).
 func (m *Manager) ScanDir(ctx context.Context, reg *Registry, dir string) ([]string, error) {
 	binaries, err := goplugin.Discover("redpolitika-*", dir)
 	if err != nil {
@@ -86,11 +86,29 @@ func (m *Manager) ScanDir(ctx context.Context, reg *Registry, dir string) ([]str
 			continue
 		}
 
+		// Call GetCapabilities to discover extension points (A15/A27)
+		info := &PluginInfo{Name: name, Conn: conn}
+		capCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		idClient := identity.NewPluginIdentityClient(conn)
+		resp, err := idClient.GetCapabilities(capCtx, &identity.GetCapabilitiesRequest{})
+		cancel()
+		if err != nil {
+			m.logger.Warn("plugin GetCapabilities failed, registering without capabilities",
+				zap.String("name", name), zap.Error(err))
+		} else {
+			info.Capabilities = resp.Capabilities
+			info.Methods = resp.Methods
+			m.logger.Info("plugin capabilities",
+				zap.String("name", name),
+				zap.Strings("capabilities", info.Capabilities),
+				zap.Strings("methods", info.Methods))
+		}
+
 		m.mu.Lock()
 		m.clients[name] = client
 		m.mu.Unlock()
 
-		reg.Register(name, conn)
+		reg.RegisterPlugin(info)
 		registered = append(registered, name)
 		m.logger.Info("plugin started", zap.String("name", name))
 	}

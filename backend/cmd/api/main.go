@@ -110,10 +110,13 @@ func main() {
 				engine *service.RuleEngine,
 				calculator *service.ScoreCalculator,
 				logger *zap.Logger,
+				reg *plugin.Registry,
 			) *usecase.AnalyzeTextUseCase {
-				// CE: LLMProvider and DetectFunctionProvider are extension points
-				// for plugins/EE — nil in CE core (A16/A27).
-				return usecase.NewAnalyzeTextUseCase(ruleRepo, sessionRepo, cache, engine, calculator, nil, nil, logger)
+				// Build plugin adapters from registry (A27 extension points)
+				// Returns nil if no plugin provides the capability — fallback to core-only.
+				llmProvider := plugin.NewLLMAdapter(reg)
+				detectFunc := plugin.NewDetectAdapter(reg)
+				return usecase.NewAnalyzeTextUseCase(ruleRepo, sessionRepo, cache, engine, calculator, llmProvider, detectFunc, logger)
 			},
 			usecase.NewAcceptRejectFlagUseCase,
 			usecase.NewApplyFixUseCase,

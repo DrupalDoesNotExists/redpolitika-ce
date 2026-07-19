@@ -49,26 +49,3 @@ type CacheRepository interface {
 	// Invalidate clears cache entries for a config hash (when rules reload).
 	Invalidate(ctx context.Context, configHash uint64) error
 }
-
-// --- Extension Points (A27) ---
-
-// LLMProvider is an extension point for LLM-based detection.
-// Implementation: plugin via HashiCorp go-plugin (or direct provider in EE).
-type LLMProvider interface {
-	// CheckText sends text for LLM analysis and returns matches.
-	CheckText(ctx context.Context, text string, rule *model.Rule) ([]*model.Flag, error)
-}
-
-// DetectFunctionProvider is a generic extension point for custom detection (A27).
-// Plugins register with a scoped name (A37, e.g., "spacy/ner") and are dispatched
-// by the rule's detect.method. The domain does not know plugin capabilities in advance.
-type DetectFunctionProvider interface {
-	// Detect runs custom detection on text and returns flags.
-	Detect(ctx context.Context, text string, rule *model.Rule) ([]*model.Flag, error)
-}
-
-// FixFunctionProvider is a generic extension point for custom fix functions (A27).
-type FixFunctionProvider interface {
-	// Fix applies a custom fix and returns the corrected text.
-	Fix(ctx context.Context, text string, flag *model.Flag) (string, error)
-}

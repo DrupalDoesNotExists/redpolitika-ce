@@ -1,0 +1,20 @@
+syntax = "proto3";
+package fix;
+option go_package = "github.com/drupaldoesnotexists/redpolitika/ce/proto/fix";
+
+service FixService {
+    rpc Fix(FixRequest) returns (FixResponse);
+}
+
+message FixRequest {
+    string text = 1;
+    string rule_id = 2;
+    string match_text = 3;
+    uint32 start = 4;
+    uint32 end = 5;
+    string config = 6;
+}
+
+message FixResponse {
+    string fixed_text = 1;
+}
