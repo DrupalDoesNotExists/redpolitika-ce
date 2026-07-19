@@ -5,6 +5,15 @@ export default function Footer() {
     <footer className="mt-12 border-t border-outline pt-6 pb-12 text-center">
       <p className="text-[13px] leading-5 text-[#6b645a]">
         <Link
+          href="/pages/"
+          className="text-[#6b645a] no-underline hover:text-[#1a1a1a]"
+        >
+          Страницы
+        </Link>
+        <span className="mx-2 text-[#c0b8a8]" aria-hidden>
+          ·
+        </span>
+        <Link
           href="/about/"
           className="text-[#6b645a] no-underline hover:text-[#1a1a1a]"
         >

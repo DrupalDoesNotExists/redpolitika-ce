@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -20,6 +21,25 @@ interface PageData {
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
+
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-zа-яё0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function extractTextContent(node: React.ReactNode): string {
+  if (typeof node === "string") return node;
+  if (typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(extractTextContent).join("");
+  if (node && typeof node === "object" && "props" in node) {
+    return extractTextContent((node as any).props.children);
+  }
+  return "";
+}
 
 /** Strip leading `# Title` heading from markdown to avoid duplicate. */
 function stripTitleFromMarkdown(markdown: string, title: string): string {
@@ -129,6 +149,54 @@ export default function MarkdownPage({ slug }: { slug: string }) {
     ? stripTitleFromMarkdown(page.content_markdown, page.title)
     : page.content_markdown;
 
+  const heading = useCallback(
+    (level: 1 | 2 | 3 | 4 | 5 | 6) =>
+      function Heading({
+        children,
+        ...props
+      }: {
+        children?: React.ReactNode;
+      } & React.HTMLAttributes<HTMLHeadingElement>) {
+        const text = extractTextContent(children);
+        const id = slugify(text);
+
+        const handleCopy = () => {
+          const url = `${window.location.origin}${window.location.pathname}#${id}`;
+          navigator.clipboard.writeText(url);
+        };
+
+        const shared = (
+          <a
+            href={`#${id}`}
+            onClick={(e) => {
+              e.preventDefault();
+              handleCopy();
+            }}
+            className="absolute -left-6 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-[#c0b8a8] hover:text-[#1a1a1a] no-underline text-lg"
+            aria-label="Copy heading link"
+          >
+            ¶
+          </a>
+        );
+
+        switch (level) {
+          case 1:
+            return <h1 id={id} className="group relative" {...props}>{shared}{children}</h1>;
+          case 2:
+            return <h2 id={id} className="group relative" {...props}>{shared}{children}</h2>;
+          case 3:
+            return <h3 id={id} className="group relative" {...props}>{shared}{children}</h3>;
+          case 4:
+            return <h4 id={id} className="group relative" {...props}>{shared}{children}</h4>;
+          case 5:
+            return <h5 id={id} className="group relative" {...props}>{shared}{children}</h5>;
+          case 6:
+            return <h6 id={id} className="group relative" {...props}>{shared}{children}</h6>;
+        }
+      },
+    [],
+  );
+
   return (
     <div className="mx-auto max-w-[980px] px-8 editor-area">
       <Link
@@ -157,7 +225,17 @@ export default function MarkdownPage({ slug }: { slug: string }) {
       )}
 
       <article className="markdown-content">
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={{
+            h1: heading(1),
+            h2: heading(2),
+            h3: heading(3),
+            h4: heading(4),
+            h5: heading(5),
+            h6: heading(6),
+          }}
+        >
           {cleanedMarkdown}
         </ReactMarkdown>
       </article>
