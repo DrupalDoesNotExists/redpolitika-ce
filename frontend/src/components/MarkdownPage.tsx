@@ -53,7 +53,7 @@ function stripTitleFromMarkdown(markdown: string, title: string): string {
 /* ------------------------------------------------------------------ */
 
 async function fetchPage(slug: string): Promise<PageData> {
-  const res = await fetch(`/api/pages/${encodeURIComponent(slug)}`);
+  const res = await fetch(`/api/pages/${slug}`);
   if (!res.ok) {
     if (res.status === 404) throw new Error("not-found");
     throw new Error(`Failed to fetch page: ${res.status}`);
