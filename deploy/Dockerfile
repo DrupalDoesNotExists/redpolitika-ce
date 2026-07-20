@@ -52,7 +52,7 @@ RUN protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_o
 
 # Runtime — Caddy ingress + Go API + Next.js
 FROM caddy:alpine
-RUN apk add --no-cache ca-certificates tzdata nodejs
+RUN apk add --no-cache ca-certificates tzdata nodejs supervisor
 COPY --from=builder /redpolitika /usr/local/bin/redpolitika
 # CE plugins
 COPY --from=plugin-builder /pages-plugin /etc/redpolitika/plugins/redpolitika-pages
@@ -65,6 +65,7 @@ COPY --from=frontend /frontend/.next/static /nextjs/.next/static
 # Caddy + entrypoint
 COPY deploy/Caddyfile /etc/caddy/Caddyfile
 COPY deploy/entrypoint.sh /entrypoint.sh
+COPY deploy/supervisord.conf /etc/supervisord.conf
 RUN chmod +x /entrypoint.sh
 
 # Expose Caddy port
