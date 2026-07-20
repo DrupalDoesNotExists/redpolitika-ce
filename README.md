@@ -1,24 +1,38 @@
+---
+title: Redpolitika
+description: Open-core сервис проверки и правки текста по правилам редполитики в YAML
+lang: ru
+---
+
 # Redpolitika
 
-**Open-core text checking service against editorial policy rules in YAML.**  
-Think "Glavred, but for any editorial policy."
+**Open-core сервис проверки и правки текста по правилам редакционной политики в YAML.**  
+Аналог «Главреда», но под любую редполитику — для любого языка.
 
-Define your editorial style as YAML rules — `Redpolitika` checks text, flags violations, and suggests fixes. Works out of the box with Docker Compose.
+Определите стиль редполитики YAML-правилами — Redpolitika проверяет текст, находит нарушения и предлагает исправления. Работает сразу с Docker Compose.
 
 ---
 
-## Features
+## Возможности
 
-- **YAML-defined rules** — composable detect/fix method trees
-- **Client + server** — regex/wordlist rules run locally, composite rules on server
-- **WebSocket live analysis** — real-time flags as you type
-- **CodeMirror 6 editor** — inline flag display and navigation
-- **Extension points** — gRPC plugin system for custom providers
-- **Scoring** — cleanliness + readability, normalized per 100 words
+- **YAML-правила** — композируемые деревья detect/fix, 20+ методов детекции и 15+ методов фиксов
+- **Два скоринга** — чистота и читаемость (0–10), нормализация на 100 слов
+- **WebSocket live** — флаги в реальном времени по мере набора текста
+- **CodeMirror 6** — inline-отображение флагов в редакторе
+- **Extension points** — gRPC-плагины для LLM, NER, POS-теггеров
+- **Self-hosted** — полный контроль над данными, без отправки текстов вовне
+- **Слои правил** — base → project → override с deep-merge по id
 
-## Quick start
+## Быстрый старт
 
-### GHCR
+```bash
+mkdir -p deploy/rules deploy/plugins
+docker compose -f deploy/docker-compose.yml up --build
+```
+
+Откройте `http://localhost:8080`. Поместите YAML-файлы правил в `deploy/rules/`.
+
+### GHCR (готовый образ)
 
 ```bash
 mkdir -p rules
@@ -27,67 +41,59 @@ docker run --rm -p 8080:8080 \
   ghcr.io/drupaldoesnotexists/redpolitika-ce:latest
 ```
 
-Open `http://localhost:8080`. Put YAML rule files into `./rules` and restart (or remount).
-
-### Build locally
-
-```bash
-mkdir -p deploy/rules deploy/plugins
-docker compose -f deploy/docker-compose.yml up --build
-```
-
-Open `http://localhost:8080`. Paste text, see flags.
-
-## Architecture
+## Архитектура
 
 ```
-backend/        Go (Echo, Uber FX, DDD/ports-and-adapters)
-frontend/       Next.js static export (served by Go)
-ce-plugins/     Reference plugin examples
-plugin-sdk/     SDK for non-Go plugins
+backend/        Go (Echo, Uber FX, DDD / ports-and-adapters)
+frontend/       Next.js статический экспорт (раздаётся Go)
+ce-plugins/     Эталонные плагины (Python, Go)
+plugin-sdk/     SDK для плагинов не на Go
 deploy/         Dockerfile + docker-compose.yml
 ```
 
-Stack: Go backend, Next.js static frontend, SQLite/Postgres, CodeMirror 6, gRPC plugins, tailwind + shadcn/ui.
+Стек: Go, Echo, Uber FX, SQLite/Postgres, Next.js, CodeMirror 6, gRPC, Tailwind + shadcn/ui.
 
-## Rules
+## Правила
 
-Define rules in YAML with composable detect/fix method trees:
+Правила задаются в YAML с композируемым деревом detect/fix:
 
 ```yaml
 rules:
   - id: typography/ellipsis
     severity: 5
-    category: typography
+    category: readability
     detect:
-      regex: …
+      regex: "\\.\\.\\."
     fix:
       replace:
-        with: …
+        with: "…"
     suggestion: Замените три точки на символ многоточия
 ```
 
-Rule layer system: `base → project → override` with deep merge by `id`.
+Три слоя правил: `base → project → override` с deep-merge по `id`.
 
-## Documentation
+## Документация
 
-- [Rules reference](docs/rules.md) — YAML rule format, detect/fix trees, examples
-- [Deployment guide](docs/deployment.md) — Docker, config, environment variables
-- [API reference](docs/api.md) — REST + WebSocket endpoints
-- [AI Agent Skill](docs/ai-agent-skill.md) — writing rules with AI agents
+- [Обзор](/pages/docs/overview) — архитектура и концепция
+- [Быстрый старт](/pages/docs/quickstart) — запуск за 5 минут
+- [Правила](/pages/docs/guide-rules) — полный формат YAML-правил
+- [API](/pages/docs/guide-api) — REST + WebSocket
+- [Развёртывание](/pages/docs/guide-deployment) — Docker, конфигурация
+- [Плагины](/pages/docs/guide-plugins) — расширения через gRPC
+- [Рецепты](/pages/docs/cookbook) — готовые паттерны правил
 
-## License
+## Лицензия
 
-**Business Source License 1.1** — see [LICENSE](LICENSE).
+**Business Source License 1.1** — см. [LICENSE](LICENSE).
 
 - **Change Date:** 2030-07-18 → Apache 2.0
-- **Additional Use Grant:** Free for non-production use and small entities:
-  - ≤ 15M RUB annual revenue (Russian Federation entities)
-  - ≤ $400K annual revenue (entities outside Russia)
-  - Two independent fixed thresholds — no currency rate linkage
+- **Additional Use Grant:** бесплатно для некоммерческого использования и небольших организаций:
+  - ≤ 15 млн ₽ годовой выручки (юрлица РФ)
+  - ≤ $400K годовой выручки (остальной мир)
+  - Два независимых фиксированных порога — без привязки курсом
 
-Enterprise features (EE) are proprietary and separate.
+Enterprise-функции (EE) проприетарны и поставляются отдельно.
 
-## Notice
+## Уведомления
 
-See [NOTICE](NOTICE) for third-party licenses.
+См. [NOTICE](NOTICE) о сторонних лицензиях.

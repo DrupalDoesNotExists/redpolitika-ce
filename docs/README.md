@@ -1,14 +1,22 @@
-# redpolitika documentation
+---
+title: Документация Redpolitika
+description: Полная документация — правила, API, развёртывание, плагины
+lang: ru
+weight: 0
+---
 
-| Document | Description |
-|----------|-------------|
-| [Rules](rules.md) | YAML rule format — detect/fix method trees, examples |
-| [Cookbook](cookbook.md) | Composite patterns (whitelist, threshold, near, …) |
-| [Schema](schema.json) | JSON Schema for rule files (editor validation) |
-| [Deployment](deployment.md) | Docker Compose, configuration, environment variables |
-| [API](api.md) | REST + WebSocket endpoints, OpenAPI spec |
-| [AI Agent Skill](ai-agent-skill.md) | Writing rules with AI coding agents |
+# Документация Redpolitika
 
-Quick start: `docker compose -f deploy/docker-compose.yml up` → http://localhost:8080
+| Раздел | Описание |
+|--------|----------|
+| [Обзор](overview.md) | Архитектура, концепция, стек |
+| [Быстрый старт](quickstart.md) | Запуск за 5 минут |
+| [Правила](guide-rules.md) | Полный формат YAML-правил — detect/fix деревья |
+| [API](guide-api.md) | REST + WebSocket, примеры запросов |
+| [Развёртывание](guide-deployment.md) | Docker, конфигурация, переменные окружения |
+| [Плагины](guide-plugins.md) | Расширения через gRPC |
+| [Рецепты](cookbook.md) | Готовые паттерны правил |
 
-Image has no bundled rules — mount your YAML and set `RULES_DIR` (see [deployment](deployment.md)).
+Быстрый старт: `docker compose -f deploy/docker-compose.yml up` → http://localhost:8080
+
+Образ не содержит встроенных правил — монтируйте свои YAML и настройте `RULES_DIR` (см. [развёртывание](guide-deployment.md)).

@@ -1,12 +1,19 @@
-# Rule cookbook
+---
+title: Рецепты правил
+description: Готовые композируемые паттерны для типовых задач редполитики
+weight: 80
+lang: ru
+---
 
-Composable patterns for common editorial checks. Full reference: [rules.md](rules.md).
+# Рецепты правил
+
+Готовые композируемые паттерны для типовых задач. Полный справочник — [guide-rules.md](guide-rules.md).
 
 ---
 
-## 1. Whitelist exclusion (`exclude` / and+not)
+## 1. Исключение из списка (`exclude` / and+not)
 
-Flag words with «ё» except proper names / exceptions.
+Флаги слов с «ё» кроме исключений.
 
 ```yaml
 rules:
@@ -24,7 +31,7 @@ rules:
     suggestion: "Проверьте написание через «ё»"
 ```
 
-Same without sugar:
+Без сахара:
 
 ```yaml
 detect:
@@ -36,9 +43,9 @@ detect:
 
 ---
 
-## 2. Concentration (`threshold`)
+## 2. Концентрация (`threshold`)
 
-Flag when a hedge word appears 3+ times per 100 words.
+Флаг, когда слово-паразит встречается 3+ раз на 100 слов.
 
 ```yaml
 rules:
@@ -58,9 +65,9 @@ rules:
 
 ---
 
-## 3. Contextual before/after
+## 3. Контекст: before / after
 
-Lowercase after a colon (child must be uppercase letter right after `: `).
+Строчная после двоеточия.
 
 ```yaml
 rules:
@@ -83,9 +90,9 @@ rules:
 
 ---
 
-## 4. Paired stamps (`near`)
+## 4. Парные штампы (`near`)
 
-Two clichés in the same sentence.
+Два канцеляризма в одном предложении.
 
 ```yaml
 rules:
@@ -104,7 +111,9 @@ rules:
 
 ---
 
-## 5. Capture groups in fix
+## 5. Capture groups в fix
+
+Перестановка слов.
 
 ```yaml
 rules:
@@ -122,9 +131,9 @@ rules:
 
 ---
 
-## 6. Conditional fix (`when`)
+## 6. Условный fix (`when`)
 
-Replace ё→е only for all-lowercase matches (skip likely proper names).
+Замена ё→е только для слов в нижнем регистре (пропуск имён собственных).
 
 ```yaml
 rules:
@@ -145,7 +154,6 @@ rules:
 
 ---
 
-## Related
+## Связанное
 
-- [rules.md](rules.md) — full method reference
-- [ai-agent-skill.md](ai-agent-skill.md) — writing rules with an AI agent
+- [guide-rules.md](guide-rules.md) — полный справочник методов
