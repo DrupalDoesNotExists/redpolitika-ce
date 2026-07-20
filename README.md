@@ -19,7 +19,7 @@ lang: ru
 - **Два скоринга** — чистота и читаемость (0–10), нормализация на 100 слов
 - **WebSocket live** — флаги в реальном времени по мере набора текста
 - **CodeMirror 6** — inline-отображение флагов в редакторе
-- **Extension points** — gRPC-плагины для LLM, NER, POS-теггеров
+- **Extension points** — gRPC-плагины для LLM, NER, POS-теггеров (WIP: скоро будут плагины для NLP и ED)
 - **Self-hosted** — полный контроль над данными, без отправки текстов вовне
 - **Слои правил** — base → project → override с deep-merge по id
 
@@ -45,8 +45,8 @@ docker run --rm -p 8080:8080 \
 
 ```
 backend/        Go (Echo, Uber FX, DDD / ports-and-adapters)
-frontend/       Next.js статический экспорт (раздаётся Go)
-ce-plugins/     Эталонные плагины (Python, Go)
+frontend/       Next.js (standalone SSR, Caddy reverse proxy)
+ce-plugins/     Встроенные плагины CE (Python, Go)
 plugin-sdk/     SDK для плагинов не на Go
 deploy/         Dockerfile + docker-compose.yml
 ```

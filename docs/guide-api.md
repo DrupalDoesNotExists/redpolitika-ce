@@ -28,7 +28,7 @@ lang: ru
 
 Prometheus text exposition (`redpolitika_analyze_total`, `redpolitika_analyze_latency_seconds`, `redpolitika_flags_total`).
 
-### `GET /version` / `GET /api/version`
+### `GET /version`
 
 Метаданные сборки (через `-ldflags` / Docker build-args, не хардкод).
 
@@ -43,7 +43,7 @@ Prometheus text exposition (`redpolitika_analyze_total`, `redpolitika_analyze_la
 }
 ```
 
-Оба пути возвращают одно и то же (фронтенд предпочитает `/api/version`). Локальная `go build` без ldflags: `version=dev`, `commit=unknown`, `build_time=unknown`.
+Локальная `go build` без ldflags: `version=dev`, `commit=unknown`, `build_time=unknown`.
 
 ### `GET /api/pages`
 

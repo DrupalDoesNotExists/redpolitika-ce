@@ -43,17 +43,17 @@ docker compose -f deploy/docker-compose.yml up --build
 
 | Переменная | Значение по умолч. | Описание |
 |-----------|-------------------|----------|
-| `PORT` | `8080` | Порт HTTP |
+| `PORT` | `8081` | Порт HTTP (Go-бэкенд; Caddy — входной reverse proxy на :8080) |
 | `LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error` |
 | `ENVIRONMENT` | `production` | Метка окружения |
-| `STATIC_DIR` | `/frontend/out` | Директория статики Next.js (встроена в образ) |
+| `STATIC_DIR` | `../frontend/out` | Директория статики Next.js (dev; в production Caddy → Next.js) |
 | `RULES_DIR` | `/etc/redpolitika/rules` | Базовый слой YAML-правил |
 | `RULES_PROJECT_DIR` | — | Проектный слой (override) |
 | `RULES_OVERRIDE_DIR` | — | Финальный слой (per-env override) |
 | `PLUGINS_DIR` | `/etc/redpolitika/plugins` | Директория бинарников плагинов |
 | `DB_DRIVER` | `sqlite` | `sqlite` или `postgres` |
 | `DB_DSN` | `file:/data/redpolitika.db?…` | Строка подключения к БД |
-| `PARAGRAPH_SEPARATOR` | `\n\n` | Разделитель абзацев |
+| `PARAGRAPH_SEPARATOR` | — | Разделитель абзацев (пустая строка → `\n\n`) |
 | `PLUGIN_PAGES_FLAGS` | `--pages-dir=…` | Флаги для плагина pages |
 
 ### PostgreSQL
@@ -101,7 +101,7 @@ docker run --rm -p 8080:8080 \
 
 - `ghcr.io/<owner>/redpolitika-ce:latest`
 - `ghcr.io/<owner>/redpolitika-ce:<version>`
-- `ghcr.io/<owner>/redpolitika-ce:full`
+
 
 Аутентификация через `GITHUB_TOKEN` (`packages: write`). После первого пуша установите видимость пакета в **public** в настройках GitHub Packages, если нужен анонимный `docker pull`.
 

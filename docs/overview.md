@@ -54,7 +54,7 @@ WebSocket /ws/live ← Принятие/отклонение ← UI (CodeMirror 
 | Компонент | Технология |
 |-----------|-----------|
 | Backend | Go, Echo, Uber FX (DI), DDD / ports-and-adapters |
-| Frontend | Next.js (static export), CodeMirror 6, Tailwind, shadcn/ui |
+| Frontend | Next.js (standalone SSR), CodeMirror 6, Tailwind, shadcn/ui |
 | Database | SQLite (default) / PostgreSQL opt-in |
 | Plugin system | HashiCorp go-plugin, gRPC |
 | Rules | YAML, deep-merge слоёв, RE2-совместимые regex |

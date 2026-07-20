@@ -13,8 +13,6 @@ __pycache__/
 .venv/
 
 # AI agent and internal dev docs
-AGENTS.md
-docs-ai/
 frontend/AGENTS.md
 frontend/CLAUDE.md
 

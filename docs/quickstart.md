@@ -34,7 +34,7 @@ rules:
     suggestion: "Замените три точки на символ многоточия"
 ```
 
-Перезапустите: `docker compose -f deploy/docker-compose.yml restart api`.
+Перезапустите: `docker compose -f deploy/docker-compose.yml restart redpolitika`.
 
 ## 3. Проверьте работу
 
