@@ -5,12 +5,18 @@ package main
 import (
 	"context"
 	"flag"
+	"log"
+	"os"
 
 	goplugin "github.com/hashicorp/go-plugin"
 	identitypb "github.com/drupaldoesnotexists/redpolitika/ce/plugins/pages/proto/identity"
 	pagespb "github.com/drupaldoesnotexists/redpolitika/ce/plugins/pages/proto/pages"
 	"google.golang.org/grpc"
 )
+
+// log is the plugin's logger. Writes to stderr — go-plugin captures
+// stderr and routes it through the host's structured logging (zap).
+var logp = log.New(os.Stderr, "[pages-plugin] ", log.LstdFlags|log.Lshortfile)
 
 // pagesDir is the directory containing .md files to serve.
 // Configured via --pages-dir flag, passed by core from PLUGINS_FLAGS.

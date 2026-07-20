@@ -13,6 +13,9 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Ensure compile-time access to the package-level logger.
+var _ = logp
+
 // frontmatter holds optional YAML frontmatter fields from .md files.
 type frontmatter struct {
 	Title       string `yaml:"title"`
@@ -55,10 +58,13 @@ type pagesService struct {
 
 // ListPages scans pagesDir recursively for *.md files and returns their slug + metadata.
 func (s *pagesService) ListPages(_ context.Context, _ *pagespb.ListPagesRequest) (*pagespb.ListPagesResponse, error) {
+	logp.Println("ListPages: scanning", pagesDir)
+
 	var pages []*pagespb.Page
 
 	err := filepath.WalkDir(pagesDir, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
+			logp.Printf("ListPages: walk error at %s: %v", path, err)
 			return err
 		}
 		if d.IsDir() {
@@ -74,6 +80,7 @@ func (s *pagesService) ListPages(_ context.Context, _ *pagespb.ListPagesRequest)
 		}
 		slug := strings.TrimSuffix(rel, ".md")
 		title, desc, lang := pageMetadata(path, slug)
+		logp.Printf("ListPages: found page slug=%q title=%q lang=%q", slug, title, lang)
 		pages = append(pages, &pagespb.Page{
 			Slug:        slug,
 			Title:       title,
@@ -90,6 +97,7 @@ func (s *pagesService) ListPages(_ context.Context, _ *pagespb.ListPagesRequest)
 		pages = []*pagespb.Page{}
 	}
 
+	logp.Printf("ListPages: returning %d pages", len(pages))
 	return &pagespb.ListPagesResponse{Pages: pages}, nil
 }
 
@@ -112,7 +120,6 @@ func isPathWithin(basePath, targetPath string) (bool, error) {
 }
 
 // cleanSlug normalises a slug and rejects path traversal.
-// Returns the cleaned slug or an error.
 func cleanSlug(slug string) (string, error) {
 	clean := filepath.Clean(slug)
 
@@ -134,26 +141,34 @@ func cleanSlug(slug string) (string, error) {
 
 // GetPage reads slug.md from pagesDir and returns full content.
 func (s *pagesService) GetPage(_ context.Context, req *pagespb.GetPageRequest) (*pagespb.GetPageResponse, error) {
+	logp.Printf("GetPage: slug=%q", req.Slug)
+
 	slug, err := cleanSlug(req.Slug)
 	if err != nil {
+		logp.Printf("GetPage: invalid slug %q: %v", req.Slug, err)
 		return nil, fmt.Errorf("invalid slug: %q: %w", req.Slug, err)
 	}
 
 	path := filepath.Join(pagesDir, slug+".md")
+	logp.Printf("GetPage: resolved path=%s", path)
 
 	within, err := isPathWithin(pagesDir, path)
 	if err != nil {
+		logp.Printf("GetPage: path check error for %q: %v", path, err)
 		return nil, fmt.Errorf("path check: %w", err)
 	}
 	if !within {
+		logp.Printf("GetPage: access denied for %q (path traversal attempt?)", req.Slug)
 		return nil, fmt.Errorf("access denied: %q", req.Slug)
 	}
 
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
+			logp.Printf("GetPage: page not found %q", req.Slug)
 			return nil, status.Error(codes.NotFound, fmt.Sprintf("page not found: %q", req.Slug))
 		}
+		logp.Printf("GetPage: read error for %q: %v", req.Slug, err)
 		return nil, fmt.Errorf("read page %q: %w", req.Slug, err)
 	}
 
@@ -163,6 +178,7 @@ func (s *pagesService) GetPage(_ context.Context, req *pagespb.GetPageRequest) (
 	if title == "" {
 		title = fallbackTitle(body, slug)
 	}
+	logp.Printf("GetPage: returning slug=%q title=%q len=%d", slug, title, len(body))
 
 	return &pagespb.GetPageResponse{
 		Page: &pagespb.Page{

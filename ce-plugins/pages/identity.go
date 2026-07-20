@@ -13,6 +13,7 @@ type identityService struct {
 
 // GetCapabilities returns the static.pages extension point capability.
 func (s *identityService) GetCapabilities(_ context.Context, _ *identitypb.GetCapabilitiesRequest) (*identitypb.GetCapabilitiesResponse, error) {
+	logp.Println("GetCapabilities: returning static.pages")
 	return &identitypb.GetCapabilitiesResponse{
 		Capabilities: []string{"static.pages"},
 		Methods:      []string{},
