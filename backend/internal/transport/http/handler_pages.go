@@ -33,7 +33,7 @@ func (h *PagesHandler) ListPages(c echo.Context) error {
 
 // GetPage returns a single page as JSON.
 func (h *PagesHandler) GetPage(c echo.Context) error {
-	slug := c.Param("*slug")
+	slug := c.Param("*") // Echo v4: * param name is always "*", never "*slug"
 	slug = strings.TrimPrefix(slug, "/")
 	slug = strings.TrimSuffix(slug, "/")
 	if slug == "" {
