@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	hclog "github.com/hashicorp/go-hclog"
 	goplugin "github.com/hashicorp/go-plugin"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -73,11 +72,8 @@ func (m *Manager) ScanDir(ctx context.Context, reg *Registry, dir string) ([]str
 			Plugins:          goplugin.PluginSet{name: p},
 			Cmd:              exec.CommandContext(context.Background(), bin, pluginArgs...),
 			AllowedProtocols: []goplugin.Protocol{goplugin.ProtocolGRPC},
-			Logger: hclog.New(&hclog.LoggerOptions{
-				Name:  "plugin." + name,
-				Level: hclog.Info,
-			}),
-			StartTimeout: 30 * time.Second,
+			Logger:           NewZapHCLogAdapter(m.logger.Named("plugin." + name)),
+			StartTimeout:     30 * time.Second,
 		})
 
 		raw, err := client.Client()
