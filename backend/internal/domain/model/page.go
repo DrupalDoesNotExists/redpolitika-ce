@@ -3,6 +3,9 @@ package model
 // Page — static content page from plugin (static.pages EP, Level 1).
 // Slug is the URL path segment, Title is human-readable,
 // ContentMarkdown is the Markdown body.
+// Weight controls sort order (lower = earlier).
+// UpdatedAt is RFC 3339 timestamp of last file modification.
+// IsIndex indicates whether the page is a section index (_index.md).
 // Domain model — no JSON tags (use usecase.PageDTO for serialization).
 type Page struct {
 	Slug            string
@@ -10,4 +13,7 @@ type Page struct {
 	ContentMarkdown string
 	Description     string
 	Language        string
+	Weight          int
+	UpdatedAt       string
+	IsIndex         bool
 }

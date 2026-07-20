@@ -16,6 +16,8 @@ interface PageData {
   description?: string;
   language?: string;
   content_markdown: string;
+  weight?: number;
+  updated_at?: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -216,13 +218,24 @@ export default function MarkdownPage({ slug }: { slug: string }) {
         </p>
       )}
 
-      {page.language && (
-        <div className="mb-6">
+      <div className="mb-6 space-y-2">
+        {page.language && (
           <span className="inline-block rounded border border-outline px-2 py-0.5 text-[11px] font-medium uppercase leading-[18px] tracking-[0.06em] text-on-surface-variant">
             {page.language}
           </span>
-        </div>
-      )}
+        )}
+
+        {page.updated_at && (
+          <p className="text-[15px] leading-[24px] text-on-surface-variant">
+            Обновлено:{" "}
+            {new Date(page.updated_at).toLocaleDateString("ru-RU", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })}
+          </p>
+        )}
+      </div>
 
       <article className="markdown-content">
         <ReactMarkdown

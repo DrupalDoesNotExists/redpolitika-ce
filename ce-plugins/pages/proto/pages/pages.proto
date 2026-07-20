@@ -13,6 +13,9 @@ message Page {
     string content_markdown = 3;
     string description = 4;
     string language = 5;
+    int32 weight = 6;
+    string updated_at = 7;  // RFC 3339
+    bool is_index = 8;
 }
 
 message ListPagesRequest {}

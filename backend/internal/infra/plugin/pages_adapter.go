@@ -40,6 +40,9 @@ func (a *PagesAdapter) ListPages(ctx context.Context) ([]model.Page, error) {
 			ContentMarkdown: p.ContentMarkdown,
 			Description:     p.Description,
 			Language:        p.Language,
+			Weight:          int(p.Weight),
+			UpdatedAt:       p.UpdatedAt,
+			IsIndex:         p.IsIndex,
 		})
 	}
 	return pages, nil
@@ -67,6 +70,9 @@ func (a *PagesAdapter) GetPage(ctx context.Context, slug string) (*model.Page, e
 		ContentMarkdown: resp.Page.ContentMarkdown,
 		Description:     resp.Page.Description,
 		Language:        resp.Page.Language,
+		Weight:          int(resp.Page.Weight),
+		UpdatedAt:       resp.Page.UpdatedAt,
+		IsIndex:         resp.Page.IsIndex,
 	}, nil
 }
 

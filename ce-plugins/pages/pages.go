@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	pagespb "github.com/drupaldoesnotexists/redpolitika/ce/plugins/pages/proto/pages"
 	"google.golang.org/grpc/codes"
@@ -21,6 +22,7 @@ type frontmatter struct {
 	Title       string `yaml:"title"`
 	Description string `yaml:"description"`
 	Language    string `yaml:"language"`
+	Weight      int    `yaml:"weight"`
 }
 
 // parseFrontmatter extracts YAML frontmatter (between --- and ---) from content.
@@ -51,6 +53,11 @@ func parseFrontmatter(content string) (fm frontmatter, body string) {
 	return fm, body
 }
 
+// isIndexFile reports whether filename is _index.md.
+func isIndexFile(name string) bool {
+	return filepath.Base(name) == "_index.md"
+}
+
 // pagesService implements PagesServiceServer by reading .md files from disk.
 type pagesService struct {
 	pagespb.UnimplementedPagesServiceServer
@@ -73,19 +80,33 @@ func (s *pagesService) ListPages(_ context.Context, _ *pagespb.ListPagesRequest)
 		if !strings.HasSuffix(d.Name(), ".md") {
 			return nil
 		}
+
+		// File modification time for updated_at.
+		info, err := d.Info()
+		if err != nil {
+			logp.Printf("ListPages: stat error at %s: %v", path, err)
+			return nil
+		}
+		updatedAt := info.ModTime().Format(time.RFC3339)
+
 		// Compute relative slug from pagesDir: "docs/page-1" from "pagesDir/docs/page-1.md"
 		rel, err := filepath.Rel(pagesDir, path)
 		if err != nil {
 			return err
 		}
 		slug := strings.TrimSuffix(rel, ".md")
-		title, desc, lang := pageMetadata(path, slug)
-		logp.Printf("ListPages: found page slug=%q title=%q lang=%q", slug, title, lang)
+		isIdx := isIndexFile(d.Name())
+		title, desc, lang, weight := pageMetadata(path, slug)
+		logp.Printf("ListPages: found page slug=%q title=%q lang=%q weight=%d is_index=%v", slug, title, lang, weight, isIdx)
 		pages = append(pages, &pagespb.Page{
 			Slug:        slug,
 			Title:       title,
 			Description: desc,
 			Language:    lang,
+			Weight:      int32(weight),
+			UpdatedAt:   updatedAt,
+			IsIndex:     isIdx,
+			// ContentMarkdown left empty in ListPages — body served via GetPage.
 		})
 		return nil
 	})
@@ -149,6 +170,12 @@ func (s *pagesService) GetPage(_ context.Context, req *pagespb.GetPageRequest) (
 		return nil, fmt.Errorf("invalid slug: %q: %w", req.Slug, err)
 	}
 
+	// _index.md pages are not directly retrievable — they appear only in ListPages.
+	if slug == "_index" || strings.HasSuffix(slug, "/_index") {
+		logp.Printf("GetPage: slug %q is an index page, returning 404", slug)
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("page not found: %q", req.Slug))
+	}
+
 	path := filepath.Join(pagesDir, slug+".md")
 	logp.Printf("GetPage: resolved path=%s", path)
 
@@ -178,7 +205,15 @@ func (s *pagesService) GetPage(_ context.Context, req *pagespb.GetPageRequest) (
 	if title == "" {
 		title = fallbackTitle(body, slug)
 	}
-	logp.Printf("GetPage: returning slug=%q title=%q len=%d", slug, title, len(body))
+
+	// File modification time for updated_at.
+	info, err := os.Stat(path)
+	var updatedAt string
+	if err == nil {
+		updatedAt = info.ModTime().Format(time.RFC3339)
+	}
+
+	logp.Printf("GetPage: returning slug=%q title=%q len=%d weight=%d", slug, title, len(body), fm.Weight)
 
 	return &pagespb.GetPageResponse{
 		Page: &pagespb.Page{
@@ -187,16 +222,19 @@ func (s *pagesService) GetPage(_ context.Context, req *pagespb.GetPageRequest) (
 			Description:     fm.Description,
 			Language:        fm.Language,
 			ContentMarkdown: body,
+			Weight:          int32(fm.Weight),
+			UpdatedAt:       updatedAt,
+			IsIndex:         false,
 		},
 	}, nil
 }
 
-// pageMetadata reads a .md file and returns its title, description, and language.
+// pageMetadata reads a .md file and returns its title, description, language, and weight.
 // Title priority: frontmatter > first # heading > slug.
-func pageMetadata(path, slug string) (title, description, language string) {
+func pageMetadata(path, slug string) (title, description, language string, weight int) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return slug, "", ""
+		return slug, "", "", 0
 	}
 
 	fm, body := parseFrontmatter(string(data))
@@ -204,7 +242,7 @@ func pageMetadata(path, slug string) (title, description, language string) {
 	if title == "" {
 		title = fallbackTitle(body, slug)
 	}
-	return title, fm.Description, fm.Language
+	return title, fm.Description, fm.Language, fm.Weight
 }
 
 // fallbackTitle returns the first `# ` heading from content, or fallback.

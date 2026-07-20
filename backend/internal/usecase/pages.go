@@ -14,6 +14,9 @@ type PageDTO struct {
 	ContentMarkdown string `json:"content_markdown"`
 	Description     string `json:"description,omitempty"`
 	Language        string `json:"language,omitempty"`
+	Weight          int    `json:"weight,omitempty"`
+	UpdatedAt       string `json:"updated_at,omitempty"`
+	IsIndex         bool   `json:"is_index,omitempty"`
 }
 
 // PagesUseCase provides static page operations.
@@ -57,6 +60,9 @@ func pageToDTO(p *model.Page) *PageDTO {
 		ContentMarkdown: p.ContentMarkdown,
 		Description:     p.Description,
 		Language:        p.Language,
+		Weight:          p.Weight,
+		UpdatedAt:       p.UpdatedAt,
+		IsIndex:         p.IsIndex,
 	}
 }
 
