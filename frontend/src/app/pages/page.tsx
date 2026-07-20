@@ -182,7 +182,7 @@ function PagesContent() {
               <section key={group.dir}>
                 {indexPage && (
                   <div className="mb-4">
-                    <h2 className="font-serif text-xl leading-[28px] tracking-[-.01em]">
+                    <h2 className="font-serif text-[22px] leading-[28px] tracking-[-.015em]">
                       {indexPage.title}
                     </h2>
                     {indexPage.description && (
