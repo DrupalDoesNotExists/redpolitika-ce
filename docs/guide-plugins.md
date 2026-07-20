@@ -1,13 +1,13 @@
 ---
 title: Плагины
-description: Расширение Redpolitika через gRPC-плагины
+description: Расширение Редполитики через gRPC-плагины
 weight: 60
 lang: ru
 ---
 
 # Плагины
 
-Redpolitika расширяется через gRPC-плагины на базе HashiCorp go-plugin. Плагины запускаются как отдельные процессы и общаются с ядром по gRPC.
+Редполитика расширяется через gRPC-плагины на базе HashiCorp go-plugin. Плагины запускаются как отдельные процессы и общаются с ядром по gRPC.
 
 ## Extension points
 
