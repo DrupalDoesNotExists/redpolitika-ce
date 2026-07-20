@@ -2,7 +2,7 @@
 title: Плагины
 description: Расширение Редполитики через gRPC-плагины
 weight: 60
-lang: ru
+language: ru
 ---
 
 # Плагины

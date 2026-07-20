@@ -2,7 +2,7 @@
 title: Правила
 description: Полный формат YAML-правил — дерево detect/fix, все методы, примеры
 weight: 30
-lang: ru
+language: ru
 ---
 
 # Правила

@@ -2,7 +2,7 @@
 title: API
 description: REST + WebSocket endpoints, примеры запросов, формат ошибок
 weight: 40
-lang: ru
+language: ru
 ---
 
 # API

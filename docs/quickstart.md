@@ -2,7 +2,7 @@
 title: Быстрый старт
 description: Запуск Редполитики за 5 минут
 weight: 20
-lang: ru
+language: ru
 ---
 
 # Быстрый старт

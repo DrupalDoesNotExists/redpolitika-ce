@@ -1,7 +1,7 @@
 ---
 title: Редполитика β
 description: Open-core сервис проверки и правки текста по правилам редполитики в YAML
-lang: ru
+language: ru
 ---
 
 # Redpolitika
