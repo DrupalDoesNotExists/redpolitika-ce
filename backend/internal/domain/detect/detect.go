@@ -12,6 +12,14 @@ import (
 	"unicode/utf8"
 )
 
+// Package-level compiled regexps — compiled once, reused for all Detect calls.
+var (
+	reSentenceBoundary = regexp.MustCompile(`[.!?](?:\s|$)`)
+	reSentenceEnd      = regexp.MustCompile(`[.!?]`)
+	reParagraphBreak   = regexp.MustCompile(`\n\n+`)
+	reNonWhitespace    = regexp.MustCompile(`\S+`)
+)
+
 // Error represents a detect package error.
 type Error struct {
 	Op      string
@@ -149,8 +157,7 @@ func subtractRanges(a, b []MatchRange) []MatchRange {
 
 // sentenceBoundaries finds positions that end a sentence (. ! ? at end of word).
 func sentenceBoundaries(text string) []int {
-	re := regexp.MustCompile(`[.!?](?:\s|$)`)
-	matches := re.FindAllStringIndex(text, -1)
+	matches := reSentenceBoundary.FindAllStringIndex(text, -1)
 	bounds := make([]int, 0, len(matches)+1)
 	for _, m := range matches {
 		// The match includes the period: . or ? or ! — end is m[1]
@@ -487,8 +494,7 @@ func (n *SentenceEndNode) Detect(text string) []MatchRange {
 		return nil
 	}
 	if n.Inner == nil {
-		re := regexp.MustCompile(`[.!?]`)
-		matches := re.FindAllStringIndex(text, -1)
+		matches := reSentenceEnd.FindAllStringIndex(text, -1)
 		out := make([]MatchRange, 0, len(matches))
 		for _, m := range matches {
 			out = append(out, MatchRange{Start: m[0], End: m[1]})
@@ -584,8 +590,7 @@ func (n *ParagraphEndNode) Detect(text string) []MatchRange {
 		return nil
 	}
 	if n.Inner == nil {
-		re := regexp.MustCompile(`\n\n+`)
-		matches := re.FindAllStringIndex(text, -1)
+		matches := reParagraphBreak.FindAllStringIndex(text, -1)
 		out := make([]MatchRange, 0, len(matches))
 		for _, m := range matches {
 			out = append(out, MatchRange{Start: m[0], End: m[0]})
@@ -618,8 +623,7 @@ func paragraphEndPositions(text string) []int {
 // paragraphSpans returns [start, end) for each paragraph split on \n\n+.
 // End is the start of the separating newlines (content only), or EOF.
 func paragraphSpans(text string) [][2]int {
-	re := regexp.MustCompile(`\n\n+`)
-	matches := re.FindAllStringIndex(text, -1)
+	matches := reParagraphBreak.FindAllStringIndex(text, -1)
 	if len(matches) == 0 {
 		return [][2]int{{0, len(text)}}
 	}
@@ -736,8 +740,7 @@ func (n *LengthNode) Detect(text string) []MatchRange {
 			matches[i] = []int{m.Start, m.End}
 		}
 	} else {
-		wordRe := regexp.MustCompile(`\S+`)
-		matches = wordRe.FindAllStringIndex(text, -1)
+		matches = reNonWhitespace.FindAllStringIndex(text, -1)
 	}
 	var out []MatchRange
 	for _, m := range matches {
@@ -776,8 +779,7 @@ func (n *CaseNode) Detect(text string) []MatchRange {
 			matches[i] = []int{m.Start, m.End}
 		}
 	} else {
-		wordRe := regexp.MustCompile(`\S+`)
-		matches = wordRe.FindAllStringIndex(text, -1)
+		matches = reNonWhitespace.FindAllStringIndex(text, -1)
 	}
 	var out []MatchRange
 
