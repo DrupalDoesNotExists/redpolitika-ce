@@ -17,6 +17,9 @@ const nextConfig: NextConfig = {
       { source: "/healthz", destination: `${API_ORIGIN}/healthz` },
     ];
   },
+  experimental: {
+    scrollRestoration: true,
+  },
 };
 
 export default nextConfig;

@@ -128,34 +128,20 @@ function PageError() {
 }
 
 function AnchoredHeadingScroller() {
-  const pathname = usePathname();
   useEffect(() => {
-    const hash = window.location.hash;
+    const hash = window.location.hash.replace('#', '');
     if (!hash) return;
-
-    const targetId = hash.replace('#', '');
-    let attempts = 0;
-    const maxAttempts = 30;
-
-    const checkAndScroll = () => {
-      const element = document.getElementById(targetId);
+    const observer = new MutationObserver((mutations, obs) => {
+      const element = document.getElementById(hash);
 
       if (element) {
-        try {
-          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        } catch (e) {
-          window.scrollTo(0, element.getBoundingClientRect().top + window.scrollY);
-        }
-        return;
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        obs.disconnect();
       }
-
-      attempts++;
-      if (attempts < maxAttempts) {
-        setTimeout(checkAndScroll, 100);
-      }
-    };
-    checkAndScroll();
-  }, [pathname]);
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
   return null;
 }
 
