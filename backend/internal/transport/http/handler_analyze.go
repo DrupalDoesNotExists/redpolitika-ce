@@ -32,12 +32,10 @@ func (h *AnalyzeHandler) Handle(c echo.Context) error {
 		return writeProblem(c, http.StatusBadRequest, "Bad Request", "invalid JSON body")
 	}
 
-	full := c.QueryParam("full") == "true"
 	start := time.Now()
 
 	result, err := h.analyzeUC.Execute(c.Request().Context(), usecase.AnalyzeRequest{
 		Text: req.Text,
-		Full: full,
 	})
 	if err != nil {
 		return err

@@ -197,7 +197,6 @@ interface StoreState {
   scores: Scores;
   sessionId: string | null;
   connectionStatus: ConnectionStatus;
-  full: boolean;
   wordCount: number;
   textHash: string;
   drawerOpen: boolean;
@@ -216,7 +215,6 @@ interface StoreState {
   setScores: (scores: Scores) => void;
   setSessionId: (id: string | null) => void;
   setConnectionStatus: (status: ConnectionStatus) => void;
-  setFull: (full: boolean) => void;
   setDrawerOpen: (open: boolean) => void;
 }
 
@@ -226,7 +224,6 @@ export const useStore = create<StoreState>()((set, get) => ({
   scores: { cleanliness: 10, readability: 10 },
   sessionId: null,
   connectionStatus: "offline",
-  full: true,
   wordCount: 0,
   textHash: "",
   drawerOpen: false,
@@ -414,6 +411,5 @@ export const useStore = create<StoreState>()((set, get) => ({
   setScores: (scores) => set({ scores }),
   setSessionId: (id) => set({ sessionId: id }),
   setConnectionStatus: (status) => set({ connectionStatus: status }),
-  setFull: (full) => set({ full }),
   setDrawerOpen: (open) => set({ drawerOpen: open }),
 }));

@@ -48,7 +48,6 @@ func NewAnalyzeTextUseCase(
 type AnalyzeRequest struct {
 	Text      string
 	SessionID model.SessionID
-	Full      bool // skip client-side rule filtering (A11)
 }
 
 // AnalyzeResult is the output of analysis.
@@ -68,10 +67,6 @@ func (uc *AnalyzeTextUseCase) Execute(ctx context.Context, req AnalyzeRequest) (
 		return nil, &Error{Op: "AnalyzeText", Message: "load rules", Err: err}
 	}
 
-	// Filter to server-side only unless Full forces all rules (A11)
-	if !req.Full {
-		ruleset = model.NewRuleSet(ruleset.ServerRules(), ruleset.ConfigHash().Value())
-	}
 	configHash := ruleset.ConfigHash()
 
 	// Check cache

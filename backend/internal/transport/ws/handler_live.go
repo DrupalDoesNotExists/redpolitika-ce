@@ -44,7 +44,6 @@ type checkMsg struct {
 	Type     string `json:"type"`
 	Text     string `json:"text"`
 	TextHash string `json:"textHash"`
-	Full     bool   `json:"full"`
 }
 
 type flagActionMsg struct {
@@ -82,7 +81,6 @@ type ackMsg struct {
 type pendingCheck struct {
 	text     string
 	textHash string
-	full     bool
 }
 
 // Handle upgrades HTTP to WS and manages the live session.
@@ -157,7 +155,7 @@ func (h *LiveHandler) Handle(c echo.Context) error {
 			if err := json.Unmarshal(msgBytes, &req); err != nil {
 				continue
 			}
-			p := pendingCheck{text: req.Text, textHash: req.TextHash, full: req.Full}
+			p := pendingCheck{text: req.Text, textHash: req.TextHash}
 			select {
 			case checkCh <- p:
 			default:
@@ -227,7 +225,6 @@ func (h *LiveHandler) runCheck(client *Client, p pendingCheck) {
 	result, err := h.analyzeUC.Execute(context.Background(), usecase.AnalyzeRequest{
 		Text:      p.text,
 		SessionID: client.sessionID,
-		Full:      p.full,
 	})
 	if err != nil {
 		h.logger.Error("ws: check error", zap.Error(err), zap.String("session_id", client.sessionID.String()))

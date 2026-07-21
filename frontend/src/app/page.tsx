@@ -36,7 +36,6 @@ function HomeContent() {
   const scores = useStore((s) => s.scores);
   const wordCount = useStore((s) => s.wordCount);
   const textHash = useStore((s) => s.textHash);
-  const full = useStore((s) => s.full);
   const sentenceCountStore = useStore((s) => s.sentenceCount);
   const charCountStore = useStore((s) => s.charCount);
 
@@ -105,23 +104,14 @@ function HomeContent() {
     debounceRef.current = setTimeout(() => {
       const ws = wsRef.current;
       if (ws?.connected) {
-        ws.send({ type: "check", text, textHash, full: !!full });
+        ws.send({ type: "check", text, textHash });
       }
     }, DEBOUNCE_MS);
 
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [text, textHash, full]);
-
-  /* ---------- Full analysis toggle → immediate resend ---------- */
-  useEffect(() => {
-    const ws = wsRef.current;
-    if (ws?.connected && text) {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      ws.send({ type: "check", text, textHash, full: !!full });
-    }
-  }, [full]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [text, textHash]);
 
   /* ---------- Client rules on text change (instant, before WS) ---------- */
   useEffect(() => {

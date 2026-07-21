@@ -11,7 +11,6 @@ interface CheckMessage {
   type: "check";
   text: string;
   textHash: string;
-  full?: boolean;
 }
 
 interface AcceptMessage {
