@@ -23,12 +23,15 @@ rules:
     name: "Буква ё вне словаря"
     detect:
       exclude:
-        list: ["ёлка", "ёжик", "Ельцин"]
-        child:
+        match:
           regex:
             pattern: "[а-яА-ЯёЁ]*ё[а-яА-ЯёЁ]*"
             case_sensitive: true
-    suggestion: "Проверьте написание через «ё»"
+        without:
+          - wordlist:
+              list: ["ёлка", "ёжик", "Ельцин"]
+    fix:
+      suggestion: "Проверьте написание через «ё»"
 ```
 
 Без сахара:
@@ -60,7 +63,8 @@ rules:
         child:
           wordlist:
             list: ["вроде", "как бы", "типа"]
-    suggestion: "Слишком много хеджирования на участке текста"
+    fix:
+      suggestion: "Слишком много хеджирования на участке текста"
 ```
 
 ---
@@ -85,7 +89,7 @@ rules:
             case_sensitive: true
     fix:
       lowercase: {}
-    suggestion: "После двоеточия — строчная, если это не новое предложение"
+      suggestion: "После двоеточия — строчная, если это не новое предложение"
 ```
 
 ---
@@ -106,7 +110,8 @@ rules:
         near:
           wordlist: { list: ["в рамках"] }
         window: sentence
-    suggestion: "Два канцеляризма рядом — уберите один"
+    fix:
+      suggestion: "Два канцеляризма рядом — уберите один"
 ```
 
 ---
@@ -126,7 +131,7 @@ rules:
       regex_replace:
         pattern: ".*"
         replacement: "$2 у нас"
-    suggestion: "Переставьте порядок слов"
+      suggestion: "Переставьте порядок слов"
 ```
 
 ---

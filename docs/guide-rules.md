@@ -20,10 +20,10 @@ rules:
     category: "cleanliness"
     name: "Человеческое название"
     url: "/rules/name"
-    suggestion: "Что делать"
     detect:
       # дерево методов
     fix:
+      suggestion: "Что делать"
       # дерево фиксов (опционально)
     examples:
       bad:
@@ -256,13 +256,28 @@ detect:
 
 #### `exclude`
 
-Сахар над `and` + `not` + `wordlist`: исключает слова из списка.
+Сахар над `and` + `not`: совпадения pattern минус исключения. Принимает именованные ключи:
+
+- `match` — pattern-узел (что ищем)
+- `without` — список узлов-исключений
+
+```yaml
+detect:
+  exclude:
+    match:
+      regex: "[а-яА-ЯёЁ]*ё[а-яА-ЯёЁ]*"
+    without:
+      - wordlist:
+          list: ["ёлка", "ёжик"]
+      - any: {}
+```
+
+Для обратной совместимости также принимает `list`/`words` + `child` (старый формат):
 
 ```yaml
 detect:
   exclude:
     list: ["ёлка", "ёжик"]
-    case_sensitive: false
     child:
       regex: "[а-яА-ЯёЁ]*ё[а-яА-ЯёЁ]*"
 ```
@@ -526,7 +541,7 @@ rules:
     fix:
       replace:
         with: "…"
-    suggestion: "Замените три точки на символ многоточия"
+      suggestion: "Замените три точки на символ многоточия"
 ```
 
 ### Избыточность
@@ -540,7 +555,7 @@ rules:
       regex: "очень\\s+(важно|необходимо|нужно)"
     fix:
       lowercase: {}
-    suggestion: "Уберите усилитель «очень»"
+      suggestion: "Уберите усилитель «очень»"
 ```
 
 ### Список слов
@@ -589,7 +604,8 @@ rules:
         max_chars: 80
         child:
           regex: "^[А-Я]"
-    suggestion: "После двоеточия — строчная буква"
+    fix:
+      suggestion: "После двоеточия — строчная буква"
 ```
 
 ---

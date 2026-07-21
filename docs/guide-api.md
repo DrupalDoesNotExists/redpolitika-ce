@@ -82,7 +82,7 @@ Prometheus text exposition (`redpolitika_analyze_total`, `redpolitika_analyze_la
 
 ### `GET /api/client-rules`
 
-Только client-side правила — regex/wordlist листья, которые фронтенд может применить локально.
+Только client-side правила — синхронные detect-узлы, которые фронтенд может выполнить локально для мгновенных tentative flags.
 
 ```json
 [
@@ -117,9 +117,6 @@ Prometheus text exposition (`redpolitika_analyze_total`, `redpolitika_analyze_la
 ### `POST /api/analyze`
 
 Анализ текста.
-
-Параметры запроса:
-- `?full=true` — включить client-side правила (по умолч. только server-side)
 
 Запрос:
 
@@ -177,7 +174,7 @@ Prometheus text exposition (`redpolitika_analyze_total`, `redpolitika_analyze_la
 #### check / analyze
 
 ```json
-{"type": "check", "text": "Текст для анализа", "textHash": "", "full": false}
+{"type": "check", "text": "Текст для анализа", "textHash": ""}
 ```
 
 - `type: "check"` и `type: "analyze"` идентичны по поведению
