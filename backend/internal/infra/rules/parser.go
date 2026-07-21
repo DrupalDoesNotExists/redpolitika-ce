@@ -797,6 +797,10 @@ func ruleFromYAML(ry RuleYAML, refs *[]unresolvedRef) (*model.Rule, error) {
 	if err != nil {
 		return nil, &Error{Op: "ParseYAML", Message: "build detect for " + ry.ID, Err: err}
 	}
+	// Wrap in CachedNode so refs to this rule share results
+	if detectNode != nil {
+		detectNode = detect.NewCachedNode(detectNode)
+	}
 
 	// Build fix tree
 	var fixNode fix.Node

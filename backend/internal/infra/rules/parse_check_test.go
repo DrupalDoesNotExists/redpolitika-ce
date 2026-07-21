@@ -31,10 +31,6 @@ rules:
 	if dn == nil {
 		t.Fatal("detectNode is nil — child was dropped")
 	}
-	// Type assert to ensure Inner is wired
-	if _, ok := dn.(*detect.SentenceStartNode); !ok {
-		t.Fatalf("expected *SentenceStartNode, got %T", dn)
-	}
 	text := "Хорошо. плохо. Ок."
 	got := dn.Detect(text)
 	if len(got) != 1 {
