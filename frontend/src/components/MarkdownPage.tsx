@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -126,6 +127,38 @@ function PageError() {
   );
 }
 
+function AnchoredHeadingScroller() {
+  const pathname = usePathname();
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (!hash) return;
+
+    const targetId = hash.replace('#', '');
+    let attempts = 0;
+    const maxAttempts = 30;
+
+    const checkAndScroll = () => {
+      const element = document.getElementById(targetId);
+
+      if (element) {
+        try {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } catch (e) {
+          window.scrollTo(0, element.getBoundingClientRect().top + window.scrollY);
+        }
+        return;
+      }
+
+      attempts++;
+      if (attempts < maxAttempts) {
+        setTimeout(checkAndScroll, 100);
+      }
+    };
+    checkAndScroll();
+  }, [pathname]);
+  return null;
+}
+
 /* ------------------------------------------------------------------ */
 /*  MarkdownPage component                                             */
 /* ------------------------------------------------------------------ */
@@ -201,6 +234,7 @@ export default function MarkdownPage({ slug }: { slug: string }) {
 
   return (
     <div className="mx-auto max-w-[980px] px-8 editor-area">
+      <AnchoredHeadingScroller />
       <Link
         href="/pages/"
         className="mb-6 inline-block text-[15px] text-link-blue underline underline-offset-2 transition-colors hover:text-primary"
