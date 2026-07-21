@@ -1586,23 +1586,45 @@ func init() {
 		return n, nil
 	})
 
+	// exclude matches main pattern but excludes sub-matches from `without` patterns.
+	// Named keys (parser): `match` (child[0] — main pattern), `without` (child[1:] — exclusions).
+	// Backward compat: `list`/`words` args → WordlistNode exclusion.
 	Register("exclude", func(args map[string]interface{}, children []Node) (Node, error) {
 		if len(children) == 0 {
-			return nil, &Error{Op: "exclude", Message: "requires a child node"}
+			return nil, &Error{Op: "exclude", Message: "requires at least 1 child node (main pattern via match key or sequence)"}
 		}
+		mainPattern := children[0]
+
+		var excludeNodes []Node
+
+		// Backward compat: list/words args → WordlistNode exclusion
 		list := strSliceArg(args, "list")
 		if len(list) == 0 {
 			list = strSliceArg(args, "words")
 		}
-		if len(list) == 0 {
-			return nil, &Error{Op: "exclude", Message: "list (whitelist) is required"}
+		if len(list) > 0 {
+			excludeNodes = append(excludeNodes, &WordlistNode{Words: list, CaseSensitive: boolArg(args, "case_sensitive", false)})
 		}
-		caseSensitive := boolArg(args, "case_sensitive", false)
+
+		// Child nodes after main pattern = `without` exclusion patterns
+		if len(children) > 1 {
+			excludeNodes = append(excludeNodes, children[1:]...)
+		}
+
+		if len(excludeNodes) == 0 {
+			return nil, &Error{Op: "exclude", Message: "exclusion patterns required (without, list, or words)"}
+		}
+
+		var exclusionNode Node
+		if len(excludeNodes) == 1 {
+			exclusionNode = excludeNodes[0]
+		} else {
+			exclusionNode = &OrNode{Children: excludeNodes}
+		}
+
 		return &AndNode{Children: []Node{
-			children[0],
-			&NotNode{Children: []Node{
-				&WordlistNode{Words: list, CaseSensitive: caseSensitive},
-			}},
+			mainPattern,
+			&NotNode{Children: []Node{exclusionNode}},
 		}}, nil
 	})
 

@@ -201,6 +201,7 @@ var knownDetectMethods = map[string]bool{
 	"length": true, "case": true, "position": true,
 	"and": true, "or": true, "not": true,
 	"threshold": true, "near": true, "exclude": true,
+	"any": true,
 	"llm": true, "plugin": true, "ner": true, "pos": true, "function": true, "expr": true,
 	"ref": true,
 }

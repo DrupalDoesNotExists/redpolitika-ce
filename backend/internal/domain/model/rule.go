@@ -34,6 +34,7 @@ type Rule struct {
 	url           string
 	examples      Examples
 	related       []Related
+	clientSide    bool
 }
 
 // NewRule creates a Rule from raw values.
@@ -82,6 +83,7 @@ func NewRule(
 		suggestion: SuggestionFromString(suggestion),
 		name: name, url: url,
 		examples: examples, related: related,
+		clientSide: detectNode != nil && detect.IsNodeSync(detectNode),
 	}, nil
 }
 
@@ -103,15 +105,7 @@ func (r *Rule) Related() []Related         { return r.related }
 // IsClientSide — regex/wordlist leaf rules can run on client (A29).
 // Composite tree rules return false (server-side only for now).
 func (r *Rule) IsClientSide() bool {
-	if !r.enabled || r.detectNode == nil {
-		return false
-	}
-	switch r.detectNode.(type) {
-	case *detect.RegexNode, *detect.WordlistNode:
-		return true
-	default:
-		return false
-	}
+	return r.enabled && r.detectNode != nil && r.clientSide
 }
 
 // HasMethodTree returns true if this rule uses a composable method tree.
