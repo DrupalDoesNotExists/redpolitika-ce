@@ -120,8 +120,12 @@ func (l *Loader) loadDir(dir string) ([]*model.Rule, uint64, []unresolvedRef, er
 		allRefs = append(allRefs, result.Refs...)
 	}
 
-	// Sort rules by ID for deterministic ordering
+	// Sort rules by priority (descending) then ID for deterministic ordering
 	sort.Slice(allRules, func(i, j int) bool {
+		pi, pj := allRules[i].Priority(), allRules[j].Priority()
+		if pi != pj {
+			return pi > pj // higher priority first
+		}
 		return allRules[i].ID().Value() < allRules[j].ID().Value()
 	})
 

@@ -19,6 +19,7 @@ import (
 type RuleYAML struct {
 	ID       string         `yaml:"id"`
 	Severity int            `yaml:"severity"`
+	Priority int            `yaml:"priority,omitempty"`
 	Category string         `yaml:"category"`
 	Enabled  *bool          `yaml:"enabled,omitempty"`
 	Detect   DetectNodeYAML `yaml:"detect"`
@@ -753,7 +754,7 @@ func ruleFromYAML(ry RuleYAML, refs *[]unresolvedRef) (*model.Rule, error) {
 		if _, err := model.RuleIDFromString(ry.ID); err != nil {
 			return nil, &Error{Op: "ParseYAML", Message: "disable without valid id: " + ry.ID, Err: err}
 		}
-		rule, err := model.NewRule(ry.ID, 5, "cleanliness", "regex", nil, nil, "", "", "", model.Examples{}, nil)
+		rule, err := model.NewRule(ry.ID, 5, "cleanliness", "regex", nil, nil, 0, "", "", "", model.Examples{}, nil)
 		if err != nil {
 			return nil, &Error{Op: "ParseYAML", Message: "create disabled rule stub", Err: err}
 		}
@@ -786,7 +787,7 @@ func ruleFromYAML(ry RuleYAML, refs *[]unresolvedRef) (*model.Rule, error) {
 
 	rule, err := model.NewRule(
 		ry.ID, ry.Severity, ry.Category,
-		detectMethod, detectNode, fixNode,
+		detectMethod, detectNode, fixNode, ry.Priority,
 		ry.Fix.Suggestion, ry.Name, ry.URL,
 		examples, related,
 	)

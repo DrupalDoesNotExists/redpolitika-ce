@@ -23,6 +23,7 @@ type Related struct {
 // Has a composable Detect/Fix method tree per SPEC §8 (A26/Q33).
 type Rule struct {
 	id            RuleID
+	priority      int          // higher = runs first (0 default)
 	severity      Severity
 	category      Category
 	enabled       bool
@@ -77,7 +78,7 @@ func NewRule(
 	}
 
 	return &Rule{
-		id: rid, severity: sev, category: cat, enabled: true,
+		id: rid, priority: priority, severity: sev, category: cat, enabled: true,
 		detectMethod: dm, detectNode: detectNode,
 		fixNode: fixNode,
 		suggestion: SuggestionFromString(suggestion),
@@ -90,6 +91,7 @@ func NewRule(
 // --- Getters ---
 
 func (r *Rule) ID() RuleID                 { return r.id }
+func (r *Rule) Priority() int              { return r.priority }
 func (r *Rule) Severity() Severity         { return r.severity }
 func (r *Rule) Category() Category         { return r.category }
 func (r *Rule) IsEnabled() bool            { return r.enabled }
@@ -117,12 +119,13 @@ func (r *Rule) HasMethodTree() bool {
 // Disable creates a disabled copy for override merging.
 func (r *Rule) Disable() *Rule {
 	return &Rule{
-		id: r.id, severity: r.severity, category: r.category, enabled: false,
+		id: r.id, priority: r.priority, severity: r.severity, category: r.category, enabled: false,
 		detectMethod: r.detectMethod, detectNode: r.detectNode,
 		fixNode: r.fixNode,
 		suggestion: r.suggestion,
 		name: r.name, url: r.url,
 		examples: r.examples, related: r.related,
+		clientSide: r.clientSide,
 	}
 }
 
