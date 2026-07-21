@@ -1329,10 +1329,71 @@ func wordCountIn(text string) int {
 }
 
 // ---------------------------------------------------------------------------
+//  AnyNode — matches everything (catch-all)
+// ---------------------------------------------------------------------------
+
+// AnyNode matches any non-empty text. Returns the entire input as one match.
+// Equivalent to regex `.*` but without regex overhead.
+type AnyNode struct{}
+
+func (n *AnyNode) Detect(text string) []MatchRange {
+	if text == "" {
+		return nil
+	}
+	return []MatchRange{{Start: 0, End: len(text)}}
+}
+
+// IsNodeSync checks if a detect tree can run client-side (A29).
+// Leaf sync types: RegexNode, WordlistNode, AnyNode, ContainsNode, EqNode, PrefixNode, SuffixNode, SurroundedByNode.
+// Composites (AndNode, OrNode, NotNode) are sync if all children are sync.
+// RefNode is async. Everything else is async.
+func IsNodeSync(n Node) bool {
+	if n == nil {
+		return false
+	}
+	switch v := n.(type) {
+	case *RegexNode, *WordlistNode, *AnyNode, *ContainsNode, *EqNode, *PrefixNode, *SuffixNode, *SurroundedByNode:
+		return true
+	case *AndNode:
+		for _, child := range v.Children {
+			if !IsNodeSync(child) {
+				return false
+			}
+		}
+		return true
+	case *OrNode:
+		for _, child := range v.Children {
+			if !IsNodeSync(child) {
+				return false
+			}
+		}
+		return true
+	case *NotNode:
+		return len(v.Children) > 0 && IsNodeSync(v.Children[0])
+	case *RefNode:
+		return false
+	default:
+		return false
+	}
+}
+
+// ---------------------------------------------------------------------------
 //  init — register all built-in methods
 // ---------------------------------------------------------------------------
 
 func init() {
+	Register("any", func(args map[string]interface{}, children []Node) (Node, error) {
+		return &AnyNode{}, nil
+	})
+
+	Register("ref", func(args map[string]interface{}, children []Node) (Node, error) {
+		refID := strArg(args, "pattern")
+		if refID == "" {
+			return nil, &Error{Op: "ref", Message: "pattern (rule ID) is required"}
+		}
+		return NewRefNode(refID), nil
+	})
+
 	Register("regex", func(args map[string]interface{}, children []Node) (Node, error) {
 		pattern := strArg(args, "pattern")
 		if pattern == "" {

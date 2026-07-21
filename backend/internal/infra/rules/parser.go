@@ -296,6 +296,15 @@ func (n *DetectNodeYAML) UnmarshalYAML(value *yaml.Node) error {
 					if err := subVal.Decode(n.IfNode); err != nil {
 						return err
 					}
+				case key == "match":
+					n.MatchNode = &DetectNodeYAML{}
+					if err := subVal.Decode(n.MatchNode); err != nil {
+						return err
+					}
+				case key == "without":
+					if err := subVal.Decode(&n.WithoutNodes); err != nil {
+						return err
+					}
 				case key == "list":
 					if err := subVal.Decode(&n.List); err != nil {
 						return err
@@ -642,6 +651,26 @@ func buildDetectNode(ny *DetectNodeYAML, ruleID string, refs *[]unresolvedRef) (
 		child, _, err := buildDetectNode(ny.IfNode, ruleID, refs)
 		if err != nil {
 			return nil, "", &Error{Op: "buildDetectNode", Message: "build child " + ny.IfNode.Method, Err: err}
+		}
+		if child != nil {
+			children = append(children, child)
+		}
+	}
+
+	// 6. MatchNode + WithoutNodes (named keys for exclude method)
+	if ny.MatchNode != nil {
+		child, _, err := buildDetectNode(ny.MatchNode, ruleID, refs)
+		if err != nil {
+			return nil, "", &Error{Op: "buildDetectNode", Message: "build match " + ny.MatchNode.Method, Err: err}
+		}
+		if child != nil {
+			children = append(children, child)
+		}
+	}
+	for i := range ny.WithoutNodes {
+		child, _, err := buildDetectNode(&ny.WithoutNodes[i], ruleID, refs)
+		if err != nil {
+			return nil, "", &Error{Op: "buildDetectNode", Message: "build without " + ny.WithoutNodes[i].Method, Err: err}
 		}
 		if child != nil {
 			children = append(children, child)
