@@ -106,8 +106,9 @@ func (r *Rule) Examples() Examples         { return r.examples }
 func (r *Rule) Related() []Related         { return r.related }
 
 // IsClientSide checks if rule can run client-side (A29).
+// severity=0 rules are helper-only (via ref) and never sent to client.
 func (r *Rule) IsClientSide() bool {
-	return r.enabled && r.detectNode != nil && r.clientSide
+	return r.enabled && r.severity.Value() > 0 && r.detectNode != nil && r.clientSide
 }
 
 // HasMethodTree returns true if this rule uses a composable method tree.

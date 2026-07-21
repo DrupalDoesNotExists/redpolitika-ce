@@ -42,6 +42,9 @@ func (h *RulesHandler) Handle(c echo.Context) error {
 
 	out := make([]ruleMetaDTO, 0, len(ruleset.Rules()))
 	for _, r := range ruleset.Rules() {
+		if r.Severity().Value() == 0 {
+			continue // helper rules for ref only — not exposed to clients
+		}
 		out = append(out, ruleMetaDTO{
 			ID:           r.ID().Value(),
 			Severity:     r.Severity().Value(),

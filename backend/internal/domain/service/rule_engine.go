@@ -30,6 +30,9 @@ func (e *RuleEngine) Detect(text *model.Text, rules *model.RuleSet) []DetectResu
 		if rule.DetectNode() == nil {
 			continue // llm/plugin/ner/pos/function/expr handled by usecase
 		}
+		if rule.Severity().Value() == 0 {
+			continue // helper rules for ref only — no flags produced
+		}
 
 		flags := rule.Detect(text)
 		if len(flags) > 0 {

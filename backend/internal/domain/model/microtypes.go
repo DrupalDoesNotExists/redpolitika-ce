@@ -53,8 +53,8 @@ func MatchTextFromString(v string) MatchText { return MatchText{value: v} }
 func SuggestionFromString(v string) Suggestion { return Suggestion{value: v} }
 
 func SeverityFromInt(v int) (Severity, error) {
-	if v < 1 || v > 10 {
-		return Severity{}, &DomainError{Op: "SeverityFromInt", Message: "severity must be between 1 and 10"}
+	if v < 0 || v > 10 {
+		return Severity{}, &DomainError{Op: "SeverityFromInt", Message: "severity must be between 0 and 10"}
 	}
 	return Severity{value: v}, nil
 }
