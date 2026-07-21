@@ -29,7 +29,12 @@ func (c *ScoreCalculator) ComputeFromMap(
 		return model.NewScoreUnsafe(model.MaxScore), model.NewScoreUnsafe(model.MaxScore)
 	}
 
-	norm := float64(wordCount.Value()) / 100.0
+	// Floor at 100 words so short texts don't get disproportionately penalised
+	effectiveWords := float64(wordCount.Value())
+	if effectiveWords < 100 {
+		effectiveWords = 100
+	}
+	norm := effectiveWords / 100.0
 
 	for category, flags := range grouped {
 		var penalty float64
