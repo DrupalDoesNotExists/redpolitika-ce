@@ -53,20 +53,19 @@ WebSocket /ws/live ← Принятие/отклонение ← UI (CodeMirror 
 
 | Компонент | Технология |
 |-----------|-----------|
-| Backend | Go, Echo, Uber FX (DI), DDD / ports-and-adapters |
-| Frontend | Next.js (standalone SSR), CodeMirror 6, Tailwind, shadcn/ui |
-| Database | SQLite (default) / PostgreSQL opt-in |
-| Plugin system | HashiCorp go-plugin, gRPC |
-| Rules | YAML, deep-merge слоёв, RE2-совместимые regex |
+| Бэкенд | Go, Echo, Uber FX (DI), DDD / ports-and-adapters |
+| Клиент | Next.js (standalone SSR), CodeMirror 6, Tailwind, shadcn/ui |
+| База данных | SQLite (по-умолчанию) / PostgreSQL |
+| Плагины | HashiCorp go-plugin, gRPC |
+| Правила| YAML, объединение слоёв, RE2-совместимые регулярные выражения |
 
 ## Ключевые возможности
 
 - **Композируемые правила** — 20+ методов детекции и 15+ методов фиксов
 - **Два скоринга** — чистота и читаемость (0–10), нормализация на 100 слов
-- **Inline-подавление** — отключение правил на участках текста через HTML-комментарии
-- **WebSocket live** — флаги в реальном времени по мере набора текста
-- **Extension points** — плагины для кастомной логики (LLM, NER, POS)
-- **Слои правил** — base → project → override с deep-merge по id
+- **Лайв-режим** — флаги в реальном времени по мере набора текста
+- **Точки расширения** — плагины для кастомной логики (LLM, NER, POS)
+- **Слои правил** — базовый, проектный, переопределения
 
 ## Лицензия BSL
 
