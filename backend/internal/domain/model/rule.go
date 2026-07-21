@@ -49,6 +49,7 @@ func NewRule(
 	detectMethod string,
 	detectNode detect.Node,
 	fixNode fix.Node,
+	priority int,
 	suggestion string,
 	name string,
 	url string,
@@ -104,8 +105,7 @@ func (r *Rule) URL() string                { return r.url }
 func (r *Rule) Examples() Examples         { return r.examples }
 func (r *Rule) Related() []Related         { return r.related }
 
-// IsClientSide — regex/wordlist leaf rules can run on client (A29).
-// Composite tree rules return false (server-side only for now).
+// IsClientSide checks if rule can run client-side (A29).
 func (r *Rule) IsClientSide() bool {
 	return r.enabled && r.detectNode != nil && r.clientSide
 }
@@ -138,8 +138,6 @@ func (r *Rule) Detect(text *Text) []*Flag {
 		return nil
 	}
 
-	content := text.Content()
-	suppressions := ParseSuppressions(content)
 	paras := text.Paragraphs()
 	var flags []*Flag
 
@@ -165,12 +163,6 @@ func (r *Rule) Detect(text *Text) []*Flag {
 		for _, m := range matches {
 			start, end := m.Start, m.End
 			if start < 0 || end > len(para) || start >= end {
-				continue
-			}
-
-			globalStart := paraOffset + start
-			globalEnd := paraOffset + end
-			if IsSuppressed(suppressions, r.id.Value(), globalStart, globalEnd) {
 				continue
 			}
 

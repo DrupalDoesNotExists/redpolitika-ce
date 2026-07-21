@@ -73,6 +73,8 @@ type DetectNodeYAML struct {
 	NearNode    *DetectNodeYAML // second pattern for near
 	ChildNode   *DetectNodeYAML
 	IfNode      *DetectNodeYAML
+	MatchNode   *DetectNodeYAML   // main pattern for exclude
+	WithoutNodes []DetectNodeYAML // exclusion patterns for exclude
 }
 
 // FixNodeYAML is a node in the fix method tree.
