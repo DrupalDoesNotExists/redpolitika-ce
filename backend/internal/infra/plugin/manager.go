@@ -4,6 +4,7 @@ package plugin
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -44,11 +45,11 @@ func NewManager(logger *zap.Logger) *Manager {
 	}
 }
 
-// ScanDir discovers and starts all plugin binaries in dir.
+// ScanDir discovers and starts all plugin binaries in dir and its subdirectories.
 // After handshake, calls GetCapabilities to discover extension points (A15/A27).
 // Per-plugin CLI flags passed via PLUGIN_<NAME>_FLAGS env vars (e.g. PLUGIN_PAGES_FLAGS).
 func (m *Manager) ScanDir(ctx context.Context, reg *Registry, dir string) ([]string, error) {
-	binaries, err := goplugin.Discover("redpolitika-*", dir)
+	binaries, err := discoverRecursive(dir, "redpolitika-*")
 	if err != nil {
 		return nil, fmt.Errorf("plugin discover: %w", err)
 	}
@@ -172,4 +173,27 @@ func (m *Manager) StopAll() {
 		delete(m.clients, name)
 		m.logger.Info("plugin stopped", zap.String("name", name))
 	}
+}
+
+// discoverRecursive finds all files matching pattern in dir and its subdirectories.
+// Uses filepath.WalkDir for recursive discovery (unlike goplugin.Discover which is flat).
+func discoverRecursive(dir, pattern string) ([]string, error) {
+	var matches []string
+	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil // skip inaccessible dirs
+		}
+		if d.IsDir() {
+			return nil // we'll find files inside
+		}
+		matched, err := filepath.Match(pattern, d.Name())
+		if err != nil {
+			return nil
+		}
+		if matched {
+			matches = append(matches, path)
+		}
+		return nil
+	})
+	return matches, err
 }

@@ -17,8 +17,8 @@ services:
     volumes:
       # Mount your YAML rules here (image ships with an empty dir)
       - ./rules:/etc/redpolitika/rules:ro
-      # CE plugins are built into the image; named volume preserves them
-      # - redpolitika_plugins:/etc/redpolitika/plugins:ro
+      # CE plugins are built into the image; named volume adds custom plugins
+      - redpolitika_plugins:/etc/redpolitika/plugins/custom:ro
       - ./pages:/etc/redpolitika/pages:ro
       - redpolitika_data:/data
     healthcheck:
