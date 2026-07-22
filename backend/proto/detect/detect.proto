@@ -10,6 +10,7 @@ message DetectRequest {
     string text = 1;
     string rule_id = 2;
     string config = 3;
+    string method_name = 4;
 }
 
 message Match {

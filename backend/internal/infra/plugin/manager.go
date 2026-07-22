@@ -15,6 +15,10 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
+	"github.com/drupaldoesnotexists/redpolitika/ce/internal/configutil"
+	"github.com/drupaldoesnotexists/redpolitika/ce/internal/domain/detect"
+	"github.com/drupaldoesnotexists/redpolitika/ce/internal/domain/fix"
+	"github.com/drupaldoesnotexists/redpolitika/ce/internal/infra/rules"
 	"github.com/drupaldoesnotexists/redpolitika/ce/proto/identity"
 )
 
@@ -111,6 +115,29 @@ func (m *Manager) ScanDir(ctx context.Context, reg *Registry, dir string) ([]str
 				zap.String("name", name),
 				zap.Strings("capabilities", info.Capabilities),
 				zap.Strings("methods", info.Methods))
+
+			// Register each scoped method as an ExternalNode in the detect registry
+			// so the parser can build them and the adapter can extract ConfigJSON.
+			for _, method := range info.Methods {
+				methodName := method // capture
+				pluginName := name
+				detect.Register(methodName, func(args map[string]interface{}, children []detect.Node) (detect.Node, error) {
+					return &detect.ExternalNode{
+						PluginName: pluginName,
+						ConfigJSON: configutil.MarshalConfig(args),
+					}, nil
+				})
+				fix.Register(methodName, func(args map[string]interface{}, children []fix.Node) (fix.Node, error) {
+					return &fix.ExternalFixNode{
+						PluginName: pluginName,
+						MethodName: methodName,
+						ConfigJSON: configutil.MarshalConfig(args),
+					}, nil
+				})
+				rules.RegisterKnownMethod(methodName)
+				m.logger.Debug("registered plugin detect method",
+					zap.String("plugin", name), zap.String("method", methodName))
+			}
 		}
 
 		m.mu.Lock()

@@ -24,7 +24,9 @@ type DetectFunctionProvider interface {
 // FixFunctionProvider is a generic extension point for custom fix functions (A27).
 type FixFunctionProvider interface {
 	// Fix applies a custom fix and returns the corrected text.
-	Fix(ctx context.Context, text string, flag *model.Flag) (string, error)
+	// config is the JSON-serialized YAML args from the fix node (may be empty).
+	// methodName is the plugin method name that was registered.
+	Fix(ctx context.Context, text string, flag *model.Flag, config string, methodName string) (string, error)
 }
 
 // Migrator — A13 hybrid migrations.

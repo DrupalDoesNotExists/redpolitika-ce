@@ -115,9 +115,9 @@ func main() {
 			) *usecase.AnalyzeTextUseCase {
 				// Build plugin adapters from registry (A27 extension points)
 				// Returns nil if no plugin provides the capability — fallback to core-only.
-				llmProvider := plugin.NewLLMAdapter(reg)
 				detectFunc := plugin.NewDetectAdapter(reg)
-				return usecase.NewAnalyzeTextUseCase(ruleRepo, sessionRepo, cache, engine, calculator, llmProvider, detectFunc, logger)
+				fixFunc := plugin.NewFixAdapter(reg)
+				return usecase.NewAnalyzeTextUseCase(ruleRepo, sessionRepo, cache, engine, calculator, detectFunc, fixFunc, logger)
 			},
 			usecase.NewAcceptRejectFlagUseCase,
 			usecase.NewApplyFixUseCase,

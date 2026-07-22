@@ -209,6 +209,12 @@ var knownDetectMethods = map[string]bool{
 	"ref": true,
 }
 
+// RegisterKnownMethod registers a detect method name for key-as-method YAML format.
+// Called at plugin load time for each plugin-declared method.
+func RegisterKnownMethod(name string) {
+	knownDetectMethods[name] = true
+}
+
 // unresolvedRef captures a RefNode that needs resolution after all rules are parsed.
 type unresolvedRef struct {
 	Node   *detect.RefNode
@@ -562,7 +568,8 @@ func (n *FixNodeYAML) UnmarshalYAML(value *yaml.Node) error {
 
 // buildDetectNode recursively builds a detect tree from YAML node.
 // Returns (detectNode, detectMethod, error).
-// For server-side methods (llm/plugin), detectNode is nil.
+// All methods go through detect.Build() — server-side methods are registered
+// as ExternalNodes that store YAML args as ConfigJSON for plugin dispatch.
 func buildDetectNode(ny *DetectNodeYAML, ruleID string, refs *[]unresolvedRef) (detect.Node, string, error) {
 	method := ny.Method
 
@@ -575,12 +582,6 @@ func buildDetectNode(ny *DetectNodeYAML, ruleID string, refs *[]unresolvedRef) (
 	}
 	if method == "" && ny.Pattern != "" {
 		method = "regex"
-	}
-
-	// Server-side methods return nil node
-	switch method {
-	case "llm", "plugin", "ner", "pos", "function", "expr":
-		return nil, method, nil
 	}
 
 	// ref method — creates a RefNode that will be resolved phase 2
@@ -798,7 +799,8 @@ func ruleFromYAML(ry RuleYAML, refs *[]unresolvedRef) (*model.Rule, error) {
 		return nil, &Error{Op: "ParseYAML", Message: "build detect for " + ry.ID, Err: err}
 	}
 	// Wrap in CachedNode so refs to this rule share results
-	if detectNode != nil {
+	// ExternalNode is not wrapped — it has no Detect logic to cache.
+	if detectNode != nil && !detect.IsExternal(detectNode) {
 		detectNode = detect.NewCachedNode(detectNode)
 	}
 

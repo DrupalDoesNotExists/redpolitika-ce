@@ -127,6 +127,12 @@ func (f *Flag) RuleURL() string                { return f.ruleUrl }
 func (f *Flag) Examples() Examples             { return f.examples }
 func (f *Flag) Related() []Related             { return f.related }
 
+// SetSuggestion updates the flag's suggestion (replacement text).
+func (f *Flag) SetSuggestion(s Suggestion) { f.suggestion = s }
+
+// SetAutofix updates the flag's autofix.
+func (f *Flag) SetAutofix(s *string) { f.autofix = s }
+
 func (f *Flag) Accept() error {
 	if f.state != FlagStateRaised {
 		return &DomainError{Op: "Flag.Accept", Message: "can only accept a raised flag"}

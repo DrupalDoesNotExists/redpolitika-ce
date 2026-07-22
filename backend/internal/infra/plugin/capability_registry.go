@@ -47,10 +47,5 @@ var KnownCapabilities = map[string]string{
 	CapRuleValidator:  "RuleValidator",
 }
 
-// BuiltinMethods maps reserved detect method names (A37) to capability IDs.
-// These are handled by the core; plugins can also register scoped methods.
-var BuiltinMethods = map[string]string{
-	"llm": CapLLMProvider,
-	"ner": CapDetectProvider,
-	"pos": CapDetectProvider,
-}
+// BuiltinMethods is removed — all plugin methods are scoped and registered
+// at plugin load time via GetCapabilities. No method names are hardcoded in core.

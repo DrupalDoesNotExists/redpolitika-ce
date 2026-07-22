@@ -4,10 +4,21 @@ import (
 	"context"
 	"fmt"
 
+	domaindetect "github.com/drupaldoesnotexists/redpolitika/ce/internal/domain/detect"
 	"github.com/drupaldoesnotexists/redpolitika/ce/internal/domain/model"
 	"github.com/drupaldoesnotexists/redpolitika/ce/internal/domain/ports"
-	"github.com/drupaldoesnotexists/redpolitika/ce/proto/detect"
+	detectproto "github.com/drupaldoesnotexists/redpolitika/ce/proto/detect"
 )
+
+// extractPluginConfig returns the ConfigJSON from rule.DetectNode() if it's an ExternalNode.
+func extractPluginConfig(rule *model.Rule) string {
+	if n := rule.DetectNode(); n != nil {
+		if ext, ok := n.(*domaindetect.ExternalNode); ok {
+			return ext.ConfigJSON
+		}
+	}
+	return ""
+}
 
 // DetectAdapter adapts plugin DetectService into domain DetectFunctionProvider.
 type DetectAdapter struct {
@@ -23,28 +34,20 @@ func NewDetectAdapter(registry *Registry) ports.DetectFunctionProvider {
 func (a *DetectAdapter) Detect(ctx context.Context, text string, rule *model.Rule) ([]*model.Flag, error) {
 	dm := rule.DetectMethod().Value()
 
-	var info *PluginInfo
-
-	if info = a.registry.LookupMethod(dm); info != nil {
-		return a.callPlugin(ctx, info, text, rule)
+	info := a.registry.LookupMethod(dm)
+	if info == nil {
+		return nil, fmt.Errorf("detect: no plugin registered method %q", dm)
 	}
-
-	if capID, ok := BuiltinMethods[dm]; ok && capID == CapDetectProvider {
-		plugins := a.registry.FindByCapability(CapDetectProvider)
-		if len(plugins) == 0 {
-			return nil, fmt.Errorf("detect: no plugin with %q for method %q", CapDetectProvider, dm)
-		}
-		return a.callPlugin(ctx, plugins[0], text, rule)
-	}
-
-	return nil, fmt.Errorf("detect: no plugin registered method %q", dm)
+	return a.callPlugin(ctx, info, text, rule)
 }
 
 func (a *DetectAdapter) callPlugin(ctx context.Context, info *PluginInfo, text string, rule *model.Rule) ([]*model.Flag, error) {
-	client := detect.NewDetectServiceClient(info.Conn)
-	resp, err := client.Detect(ctx, &detect.DetectRequest{
-		Text:   text,
-		RuleId: rule.ID().Value(),
+	client := detectproto.NewDetectServiceClient(info.Conn)
+	resp, err := client.Detect(ctx, &detectproto.DetectRequest{
+		Text:       text,
+		RuleId:     rule.ID().Value(),
+		Config:     extractPluginConfig(rule),
+		MethodName: rule.DetectMethod().Value(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("plugin %s detect: %w", info.Name, err)

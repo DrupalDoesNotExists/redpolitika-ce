@@ -1378,7 +1378,7 @@ func IsNodeSync(n Node) bool {
 }
 
 // ---------------------------------------------------------------------------
-//  init — register all built-in methods
+//  init — 	register all built-in methods
 // ---------------------------------------------------------------------------
 
 func init() {

@@ -2,8 +2,9 @@ package usecase
 
 import (
 	"context"
-	"strings"
 
+	"github.com/drupaldoesnotexists/redpolitika/ce/internal/domain/detect"
+	"github.com/drupaldoesnotexists/redpolitika/ce/internal/domain/fix"
 	"github.com/drupaldoesnotexists/redpolitika/ce/internal/domain/model"
 	"github.com/drupaldoesnotexists/redpolitika/ce/internal/domain/ports"
 	"github.com/drupaldoesnotexists/redpolitika/ce/internal/domain/service"
@@ -19,27 +20,27 @@ type AnalyzeTextUseCase struct {
 	cache       ports.CacheRepository
 	engine      *service.RuleEngine
 	calculator  *service.ScoreCalculator
-	llmProvider ports.LLMProvider            // optional (A16)
 	detectFunc  ports.DetectFunctionProvider // optional (A27)
+	fixFunc     ports.FixFunctionProvider    // optional, for plugin autofix
 	logger      *zap.Logger
 }
 
 // NewAnalyzeTextUseCase creates an AnalyzeTextUseCase.
-// llmProvider and detectFunc are optional (may be nil for CE without plugins).
+// detectFunc and fixFunc are optional (may be nil for CE without plugins).
 func NewAnalyzeTextUseCase(
 	ruleRepo ports.RuleRepository,
 	sessionRepo ports.SessionRepository,
 	cache ports.CacheRepository,
 	engine *service.RuleEngine,
 	calculator *service.ScoreCalculator,
-	llmProvider ports.LLMProvider,
 	detectFunc ports.DetectFunctionProvider,
+	fixFunc ports.FixFunctionProvider,
 	logger *zap.Logger,
 ) *AnalyzeTextUseCase {
 	return &AnalyzeTextUseCase{
 		ruleRepo: ruleRepo, sessionRepo: sessionRepo, cache: cache,
 		engine: engine, calculator: calculator,
-		llmProvider: llmProvider, detectFunc: detectFunc,
+		detectFunc: detectFunc, fixFunc: fixFunc,
 		logger: logger,
 	}
 }
@@ -54,6 +55,27 @@ type AnalyzeRequest struct {
 type AnalyzeResult struct {
 	Analysis       *model.Analysis
 	SessionUpdated bool
+}
+
+// applyPluginFix calls the fix plugin for plugin-detected flags if the rule has an external fix node.
+func (uc *AnalyzeTextUseCase) applyPluginFix(ctx context.Context, text string, rule *model.Rule, flags []*model.Flag) {
+	if uc.fixFunc == nil {
+		return
+	}
+	if fn := rule.FixNode(); fn != nil && fix.IsExternalFix(fn) {
+		ext := fn.(*fix.ExternalFixNode)
+		for _, f := range flags {
+			fixed, err := uc.fixFunc.Fix(ctx, text, f, ext.ConfigJSON, ext.MethodName)
+			if err != nil {
+				uc.logger.Error("analyze: fix plugin error",
+					zap.String("rule", rule.ID().Value()),
+					zap.Error(err))
+				continue
+			}
+			f.SetSuggestion(model.SuggestionFromString(fixed))
+			f.SetAutofix(&fixed)
+		}
+	}
 }
 
 // Execute runs the full analysis pipeline.
@@ -86,30 +108,20 @@ func (uc *AnalyzeTextUseCase) Execute(ctx context.Context, req AnalyzeRequest) (
 	}
 
 	for _, rule := range ruleset.Rules() {
-		if rule.DetectNode() != nil {
-			continue // handled by engine
+		if !detect.IsExternal(rule.DetectNode()) {
+			continue // handled by engine (tree-based rule or no detect node)
 		}
-		dm := rule.DetectMethod().Value()
-		switch {
-		case dm == "llm":
-			if uc.llmProvider != nil {
-				flags, err := uc.llmProvider.CheckText(ctx, req.Text, rule)
-				if err != nil {
-					uc.logger.Error("analyze: llm provider error", zap.String("rule", rule.ID().Value()), zap.Error(err))
-					continue
-				}
-				allFlags = append(allFlags, flags...)
-			}
-		case dm == "plugin" || dm == "ner" || dm == "pos" || dm == "function" || strings.Contains(dm, "/"):
-			if uc.detectFunc != nil {
-				flags, err := uc.detectFunc.Detect(ctx, req.Text, rule)
-				if err != nil {
-					uc.logger.Error("analyze: detect provider error", zap.String("rule", rule.ID().Value()), zap.Error(err))
-					continue
-				}
-				allFlags = append(allFlags, flags...)
-			}
+		if uc.detectFunc == nil {
+			continue
 		}
+		flags, err := uc.detectFunc.Detect(ctx, req.Text, rule)
+		if err != nil {
+			uc.logger.Error("analyze: detect provider error", zap.String("rule", rule.ID().Value()), zap.Error(err))
+			continue
+		}
+		// Apply plugin fix if rule has external fix node
+		uc.applyPluginFix(ctx, req.Text, rule, flags)
+		allFlags = append(allFlags, flags...)
 	}
 
 	// Build rule index for scoring

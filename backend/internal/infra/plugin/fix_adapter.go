@@ -20,21 +20,23 @@ func NewFixAdapter(registry *Registry) ports.FixFunctionProvider {
 	return &FixAdapter{registry: registry}
 }
 
-func (a *FixAdapter) Fix(ctx context.Context, text string, flag *model.Flag) (string, error) {
-	plugins := a.registry.FindByCapability(CapFixProvider)
-	if len(plugins) == 0 {
-		return "", fmt.Errorf("fix: no plugin with %q capability", CapFixProvider)
+func (a *FixAdapter) Fix(ctx context.Context, text string, flag *model.Flag, config string, methodName string) (string, error) {
+	info := a.registry.LookupMethod(methodName)
+	if info == nil {
+		return "", fmt.Errorf("fix: no plugin registered method %q", methodName)
 	}
-	client := fix.NewFixServiceClient(plugins[0].Conn)
+	client := fix.NewFixServiceClient(info.Conn)
 	resp, err := client.Fix(ctx, &fix.FixRequest{
-		Text:      text,
-		RuleId:    flag.RuleID().Value(),
-		MatchText: flag.MatchText().Value(),
-		Start:     uint32(flag.Span().Start()),
-		End:       uint32(flag.Span().End()),
+		Text:       text,
+		RuleId:     flag.RuleID().Value(),
+		MatchText:  flag.MatchText().Value(),
+		Start:      uint32(flag.Span().Start()),
+		End:        uint32(flag.Span().End()),
+		Config:     config,
+		MethodName: methodName,
 	})
 	if err != nil {
-		return "", fmt.Errorf("fix plugin: %w", err)
+		return "", fmt.Errorf("fix plugin %s: %w", info.Name, err)
 	}
 	return resp.FixedText, nil
 }
